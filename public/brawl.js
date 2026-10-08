@@ -1,4 +1,4 @@
-import { BRAWL, BRAWL_WORLDS, BRAWL_TEAMS, BRAWL_ROLL, BRAWL_EMOTE, BRAWL_EMOTE_LINES, FIGHTERS, ATTACKS, CAPE, EGG_LAY, isBrawlRollInvulnerable } from '/shared/brawl.js';
+import { BRAWL, BRAWL_WORLDS, BRAWL_TEAMS, BRAWL_ROLL, BRAWL_EMOTE, BRAWL_EMOTE_LINES, FIGHTERS, ATTACKS, CAPE, EGG_LAY, isBrawlRollInvulnerable, makeFighter, knockback } from '/shared/brawl.js';
 import { BrawlTimeline, BrawlPredictor } from '/shared/brawl-client.js';
 
 const canvas = document.querySelector('#game');
@@ -23,6 +23,8 @@ backdropImage.onload = () => {
 };
 backdropImage.src = '/brawl-mountains.png';
 const lobby = document.querySelector('#lobby');
+const splashScreen = document.querySelector('#splash');
+const playButton = document.querySelector('#play');
 const readyButton = document.querySelector('#ready');
 const nameInput = document.querySelector('#name');
 const roster = document.querySelector('#roster');
@@ -60,6 +62,7 @@ const pendingPings = new Map(), pingTimes = [], probeResults = [];
 let audio = null, shake = 0, particles = [], waftEffects = [], dinEffects = [], previousPhase = null;
 let speakingPlayerId = null, activeUtterance = null;
 let visibleFlash = '', flashUntil = 0;
+let splash = true;          // the title screen shows first; its background is a scripted fight (see "attract mode" below)
 let lastUiSignature = '';
 nameInput.value = localStorage.getItem('brawl-name') || '';
 
@@ -238,7 +241,7 @@ function connect() {
     throwPad.hidden = true;
     emoteButton.hidden = true;
     stopEmoteSpeech();
-    myId = null; state = null; lobby.hidden = false;
+    myId = null; state = null; lobby.hidden = splash;
     status.textContent = pendingRestart ? 'game server restart pending' : 'reconnecting…';
     readyButton.disabled = true;
     readyButton.textContent = pendingRestart ? 'server update pending' : 'reconnecting…';
@@ -379,7 +382,7 @@ function onState(s) {
   if (uiSignature !== lastUiSignature) {
   lastUiSignature = uiSignature;
   const me = s.players.find(p => p.id === myId);
-  lobby.hidden = s.phase === 'playing' || s.phase === 'countdown';
+  lobby.hidden = splash || s.phase === 'playing' || s.phase === 'countdown';
   status.textContent = me?.spectator && (s.phase === 'playing' || s.phase === 'countdown') ? 'spectating · next match' :
     s.phase === 'playing' ? `live · ${formatTime(s.elapsed)}` :
     s.phase === 'countdown' ? 'match starting' :
@@ -623,6 +626,10 @@ function action(name) {
   } else send('brawl-action', { action: name });
 }
 window.addEventListener('keydown', event => {
+  if (splash) {
+    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); leaveSplash(); }
+    return;
+  }
   if (event.target === nameInput) return;
   const key = event.key.toLowerCase();
   if ([' ', 'arrowleft', 'arrowright', 'arrowdown', 'arrowup'].includes(key)) event.preventDefault();
@@ -1092,6 +1099,148 @@ function drawPlayer(p, lag) {
   if (p.emoteTime > 0) drawEmoteLine(p, x, y);
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+// Attract mode: the title screen's background. Four fighters (a different four each visit) wander the Dolomites stage,
+// chase each other, trade blows, get knocked off, come back, and now and then stop to emote. It is only drawn here in
+// the browser; nothing is sent to the server and it uses the same drawing code as a real match.
+const DEMO_GRAVITY = 1550;
+let demoBots = [];
+
+function makeDemo() {
+  const picks = Object.keys(FIGHTERS).sort(() => Math.random() - 0.5).slice(0, 4);
+  demoBots = picks.map((character, i) => Object.assign(makeFighter(`demo${i}`, FIGHTERS[character].label, character, i), {
+    think: Math.random() * 0.5, mode: 'hunt', wander: 1, emoteCooldown: 2 + Math.random() * 5, invuln: 0,
+  }));
+}
+
+function demoFoe(bot) {
+  let best = null, bestDistance = Infinity;
+  for (const other of demoBots) {
+    if (other === bot || other.respawn > 0) continue;
+    const distance = Math.abs(other.x - bot.x) + Math.abs(other.y - bot.y) * 1.5;
+    if (distance < bestDistance) { best = other; bestDistance = distance; }
+  }
+  return best;
+}
+
+function demoJump(bot) {
+  bot.vy = -FIGHTERS[bot.character].jump; bot.grounded = false; bot.jumps++;
+}
+
+function demoKnockOut(bot) {
+  bot.percent = 0; bot.stocks = bot.stocks > 1 ? bot.stocks - 1 : 3;
+  bot.respawn = 1.3; bot.attack = null; bot.stun = 0; bot.emoteTime = 0;
+  burst(Math.max(20, Math.min(940, bot.x)), Math.max(20, Math.min(520, bot.y)), FIGHTERS[bot.character].color, 18, 260);
+}
+
+function demoStrike(bot) {
+  const a = ATTACKS[bot.attack];
+  const reach = bot.attack === 'special' ? 100 : a.reach + 12;
+  const window = bot.attack === 'special' ? [a.startup, a.startup + 0.3] : [a.startup, a.startup + a.active];
+  if (bot.attackHit || bot.attackTime < window[0] || bot.attackTime > window[1]) return;
+  for (const foe of demoBots) {
+    if (foe === bot || foe.respawn > 0 || foe.invuln > 0) continue;
+    const ahead = (foe.x - bot.x) * bot.face;
+    if (ahead < -8 || ahead > reach + 14 || Math.abs(foe.y - bot.y) > 52) continue;
+    bot.attackHit = true;
+    foe.percent += a.damage;
+    foe.stun = 0.28 + Math.min(0.5, foe.percent / 300);
+    const speed = knockback(a, foe.percent, FIGHTERS[foe.character].weight);
+    const radians = a.angle * Math.PI / 180;
+    foe.vx = bot.face * Math.min(620, Math.cos(radians) * speed * 0.78);
+    foe.vy = -Math.min(1350, Math.sin(radians) * speed);
+    foe.grounded = false; foe.attack = null; foe.emoteTime = 0;
+    burst(foe.x, foe.y - 38, '#fff0ab', 9, 200);
+    shake = Math.max(shake, bot.attack === 'smash' ? 9 : 4);
+    break;
+  }
+}
+
+function demoStep(dt) {
+  if (!demoBots.length) makeDemo();
+  for (const bot of demoBots) {
+    bot.invuln = Math.max(0, bot.invuln - dt);
+    bot.stun = Math.max(0, bot.stun - dt);
+    bot.emoteTime = Math.max(0, bot.emoteTime - dt);
+    bot.emoteCooldown -= dt;
+    if (bot.respawn > 0) {
+      bot.respawn -= dt;
+      if (bot.respawn <= 0) {                              // drop back in from above, briefly untouchable
+        Object.assign(bot, { x: 400 + Math.random() * 160, y: 60, vx: 0, vy: 0, grounded: false, jumps: 1, invuln: 2 });
+      }
+      continue;
+    }
+    if (bot.attack) {
+      bot.attackTime += dt;
+      demoStrike(bot);
+      if (bot.attackTime >= ATTACKS[bot.attack].total) { bot.attack = null; bot.attackTime = 0; bot.attackHit = false; }
+    }
+
+    let move = 0;
+    const free = bot.stun <= 0 && !bot.attack && bot.emoteTime <= 0;
+    const foe = demoFoe(bot);
+    if (free && foe) {
+      bot.think -= dt;
+      if (bot.think <= 0) {
+        bot.think = 0.3 + Math.random() * 0.6;
+        const roll = Math.random();
+        bot.mode = roll < 0.72 ? 'hunt' : roll < 0.88 ? 'wander' : 'idle';
+        bot.wander = Math.random() < 0.5 ? -1 : 1;
+      }
+      const dx = foe.x - bot.x, direction = Math.sign(dx) || 1, closeness = Math.abs(dx);
+      if (bot.grounded && bot.emoteCooldown <= 0 && Math.random() < dt * 0.4) {
+        bot.emoteTime = BRAWL_EMOTE.duration; bot.emoteCooldown = 7 + Math.random() * 7; bot.vx = 0;
+      } else if (bot.mode === 'hunt') {
+        bot.face = direction;
+        if (closeness > 62) move = direction;
+        if (closeness < 84 && Math.abs(foe.y - bot.y) < 50 && Math.random() < dt * 3.2) {
+          const roll = Math.random();
+          bot.attack = roll < 0.28 ? 'smash' : roll < 0.45 && (bot.character === 'mario' || bot.character === 'yoshi') ? 'special' : 'jab';
+          bot.attackTime = 0; bot.attackHit = false; bot.vx = 0;
+        }
+        if (foe.y < bot.y - 60 && bot.grounded && Math.random() < dt * 1.4) demoJump(bot);
+      } else if (bot.mode === 'wander') {
+        move = bot.wander; bot.face = move;
+        if (bot.grounded && Math.random() < dt * 0.5) demoJump(bot);
+      }
+      if (!bot.grounded && bot.jumps < 2 && bot.vy > 0 && foe.y < bot.y - 30 && Math.random() < dt * 1.5) demoJump(bot);
+      // stay on the stage: turn back near the edges, and use the second jump to climb back
+      if (bot.x < 150) move = 1; else if (bot.x > 810) move = -1;
+      if (!bot.grounded && bot.y > 430 && bot.jumps < 2 && bot.vy > 0) demoJump(bot);
+      if (!bot.grounded && bot.y > 380 && (bot.x < 170 || bot.x > 790)) move = bot.x < 480 ? 1 : -1;
+    }
+
+    const wanted = move * FIGHTERS[bot.character].speed * 0.85;
+    if (bot.stun > 0) bot.vx *= Math.pow(0.55, dt * 6);
+    else bot.vx += (wanted - bot.vx) * Math.min(1, dt * (bot.grounded ? 12 : 3.5));
+    bot.vy = Math.min(900, bot.vy + DEMO_GRAVITY * dt);
+    bot.x += bot.vx * dt;
+    const before = bot.y;
+    bot.y += bot.vy * dt;
+    bot.grounded = false;
+    if (bot.vy >= 0) {
+      for (const platform of BRAWL.platforms) {
+        if (before <= platform.y + 3 && bot.y >= platform.y && bot.x > platform.x - 6 && bot.x < platform.x + platform.w + 6) {
+          bot.y = platform.y; bot.vy = 0; bot.grounded = true; bot.jumps = 0; break;
+        }
+      }
+    }
+    if (bot.y > 640 || bot.y < -150 || bot.x < -110 || bot.x > 1070) demoKnockOut(bot);
+  }
+}
+
+function leaveSplash() {
+  if (!splash) return;
+  splash = false;
+  document.body.classList.remove('splash');
+  splashScreen.hidden = true;
+  demoBots = []; particles = []; shake = 0;
+  lobby.hidden = state ? state.phase === 'playing' || state.phase === 'countdown' : false;
+  if (!lobby.hidden) nameInput.focus({ preventScroll: true });
+}
+playButton.addEventListener('click', leaveSplash);
+document.body.classList.add('splash');
+
 let lastFrame = performance.now();
 function render(now) {
   const dt = Math.min(0.05, (now - lastFrame) / 1000); lastFrame = now;
@@ -1101,14 +1250,17 @@ function render(now) {
     simAccumulator -= BRAWL.tick;
   }
   const matchWorld = Object.hasOwn(BRAWL_WORLDS, state?.world) ? state.world : 'dolomittene';
-  const shownWorld = state?.phase === 'playing' || state?.phase === 'countdown' ? matchWorld : selectedWorld;
+  const shownWorld = splash ? 'dolomittene' : state?.phase === 'playing' || state?.phase === 'countdown' ? matchWorld : selectedWorld;
   drawBackdrop(worldContext, shownWorld, now);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.save();
   if (shake > 0.2) { ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake); shake *= 0.82; }
   else shake = 0;
   drawStage(ctx, shownWorld);
-  if (state) {
+  if (splash) {
+    demoStep(dt);
+    for (const bot of demoBots) drawPlayer(bot, 0);
+  } else if (state) {
     const buffered = timeline.sample(now) || state;
     const local = state.phase === 'playing' ? predictor.visual(dt) : null;
     for (const p of buffered.projectiles) drawProjectile(p, 0, now, buffered.players);
