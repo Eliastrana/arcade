@@ -28,6 +28,8 @@ const playButton = document.querySelector('#play');
 const readyButton = document.querySelector('#ready');
 const nameInput = document.querySelector('#name');
 const roster = document.querySelector('#roster');
+const card = document.querySelector('#lobby .card');
+const podium = document.querySelector('#podium');
 const grid = document.querySelector('#characterGrid');
 const worldGrid = document.querySelector('#worldGrid');
 const worldIntro = document.querySelector('#worldIntro');
@@ -423,6 +425,8 @@ function onState(s) {
     div.textContent = `${p.spectator ? 'watching · ' : p.ready ? '✓ ' : '○ '}${teamMode && !p.spectator ? `${p.team} · ` : ''}${p.name} · ${(FIGHTERS[p.character]?.label || 'mario').toLowerCase()}`;
     return div;
   }));
+  card.classList.toggle('results', s.phase === 'results');
+  updatePodium(sorted.filter(p => !p.spectator), teamMode);
   if (!sorted.length) hint.textContent = 'waiting for players…';
   else if (me?.spectator) hint.textContent = 'room full. you will join a future match when a slot opens.';
   else if (s.phase === 'results') {
@@ -912,7 +916,9 @@ function drawProjectile(p, lag, now, players) {
   ctx.restore();
 }
 
-function drawDance(p, x, y) {
+const mainContext = ctx;
+function drawDance(p, x, y, target) {
+  const ctx = target || mainContext;
   const t = BRAWL_EMOTE.duration - p.emoteTime;
   const beat = Math.sin(t * Math.PI * 7);
   const wide = Math.sin(t * Math.PI * 3.5);
@@ -1240,6 +1246,64 @@ function leaveSplash() {
 }
 playButton.addEventListener('click', leaveSplash);
 document.body.classList.add('splash');
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The lobby podium: every fighter in the room stands on top of the lobby box with their name above them and a
+// ready / not-ready icon. Every few seconds each one does their dance (the same one as the in-game emote), and
+// right away when they press ready.
+const podiumFigures = new Map();       // player id -> the figure on the podium
+
+function updatePodium(players, teamMode) {
+  const seen = new Set();
+  players.forEach((p, index) => {
+    seen.add(p.id);
+    let f = podiumFigures.get(p.id);
+    if (!f) {
+      const el = document.createElement('div'); el.className = 'podFigure';
+      const label = document.createElement('div'); label.className = 'podName';
+      const stateIcon = document.createElement('span'); stateIcon.className = 'podState';
+      const text = document.createElement('span'); text.className = 'podText';
+      label.append(stateIcon, text);
+      const figure = document.createElement('canvas'); figure.width = 160; figure.height = 120;
+      el.append(label, figure);
+      const now = performance.now();
+      f = { el, stateIcon, text, g: figure.getContext('2d'), ready: false, character: p.character, face: 1,
+        danceFrom: -1e9, nextDance: now + 800 + Math.random() * 3500 };
+      f.g.imageSmoothingEnabled = false;
+      podiumFigures.set(p.id, f);
+    }
+    f.text.textContent = p.name;
+    f.character = p.character;
+    f.face = index < players.length / 2 ? 1 : -1;               // the fighters face each other
+    if (p.ready && !f.ready) f.danceFrom = performance.now();   // a little cheer when someone readies up
+    f.ready = p.ready;
+    f.stateIcon.classList.toggle('on', p.ready);
+    f.stateIcon.textContent = p.ready ? '✓' : '…';
+    f.stateIcon.title = p.ready ? 'ready' : 'not ready';
+    f.el.classList.toggle('mine', p.id === myId);
+    f.el.style.setProperty('--team', teamMode && BRAWL_TEAMS[p.team] ? BRAWL_TEAMS[p.team] : '');
+  });
+  for (const [id, f] of podiumFigures) if (!seen.has(id)) { f.el.remove(); podiumFigures.delete(id); }
+  podium.replaceChildren(...players.map(p => podiumFigures.get(p.id).el));
+}
+
+setInterval(() => {
+  if (lobby.hidden || document.hidden) return;
+  const now = performance.now();
+  for (const f of podiumFigures.values()) {
+    if (now >= f.nextDance) { f.danceFrom = now; f.nextDance = now + 4500 + Math.random() * 2500; }
+    const since = (now - f.danceFrom) / 1000;
+    const g = f.g;
+    g.clearRect(0, 0, 160, 120);
+    g.fillStyle = '#10303a88'; g.fillRect(38, 115, 84, 4);        // a little shadow on the box
+    if (since < BRAWL_EMOTE.duration) {
+      drawDance({ character: f.character, face: f.face, invuln: 0, emoteTime: BRAWL_EMOTE.duration - since }, 80, 116, g);
+    } else {
+      const bob = Math.round(Math.sin(now / 520 + f.nextDance) * 1.2);       // breathing while waiting
+      drawFighter(g, f.character, 80, 116 + bob, 2.1, f.face, null, 0, false);
+    }
+  }
+}, 66);
 
 let lastFrame = performance.now();
 function render(now) {
