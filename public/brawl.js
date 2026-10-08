@@ -1249,12 +1249,15 @@ document.body.classList.add('splash');
 
 // ---------------------------------------------------------------------------------------------------------------------
 // The lobby podium: every fighter in the room stands on top of the lobby box with their name above them and a
-// ready / not-ready icon. Every few seconds each one does their dance (the same one as the in-game emote), and
-// right away when they press ready.
+// ready / not-ready icon. They walk back and forth along the box, hop around (no fighting up here), and every few
+// seconds stop and do their dance (the same one as the in-game emote), or right away when they press ready.
 const podiumFigures = new Map();       // player id -> the figure on the podium
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+let podiumLast = performance.now();
 
 function updatePodium(players, teamMode) {
   const seen = new Set();
+  const width = podium.clientWidth || 600;
   players.forEach((p, index) => {
     seen.add(p.id);
     let f = podiumFigures.get(p.id);
@@ -1267,14 +1270,16 @@ function updatePodium(players, teamMode) {
       const figure = document.createElement('canvas'); figure.width = 160; figure.height = 120;
       el.append(label, figure);
       const now = performance.now();
-      f = { el, stateIcon, text, g: figure.getContext('2d'), ready: false, character: p.character, face: 1,
+      const x = width * (index + 1) / (players.length + 1);
+      f = { el, stateIcon, text, g: figure.getContext('2d'), ready: false, character: p.character,
+        x, y: 0, vx: 0, vy: 0, face: x < width / 2 ? 1 : -1, mode: 'stand', until: now + 300 + Math.random() * 1500, target: x,
         danceFrom: -1e9, nextDance: now + 800 + Math.random() * 3500 };
       f.g.imageSmoothingEnabled = false;
+      podium.append(el);
       podiumFigures.set(p.id, f);
     }
     f.text.textContent = p.name;
     f.character = p.character;
-    f.face = index < players.length / 2 ? 1 : -1;               // the fighters face each other
     if (p.ready && !f.ready) f.danceFrom = performance.now();   // a little cheer when someone readies up
     f.ready = p.ready;
     f.stateIcon.classList.toggle('on', p.ready);
@@ -1284,26 +1289,61 @@ function updatePodium(players, teamMode) {
     f.el.style.setProperty('--team', teamMode && BRAWL_TEAMS[p.team] ? BRAWL_TEAMS[p.team] : '');
   });
   for (const [id, f] of podiumFigures) if (!seen.has(id)) { f.el.remove(); podiumFigures.delete(id); }
-  podium.replaceChildren(...players.map(p => podiumFigures.get(p.id).el));
+}
+
+// One step of a figure's life on the box: gravity for hops, and every so often a new little plan (walk, hop or stand).
+function podiumMove(f, dt, now, width, dancing) {
+  const min = 34, max = Math.max(min, width - 34);
+  if (f.y > 0 || f.vy > 0) {                          // y is the height above the box
+    f.vy -= 1500 * dt; f.y += f.vy * dt;
+    if (f.y <= 0) { f.y = 0; f.vy = 0; }
+  }
+  const airborne = f.y > 0;
+  if (!airborne && !dancing && now >= f.until) {
+    const roll = Math.random();
+    if (roll < 0.4) {
+      f.mode = 'walk'; f.target = min + Math.random() * (max - min); f.until = now + 1200 + Math.random() * 1800;
+    } else if (roll < 0.75) {
+      f.mode = 'hop'; f.vy = 320 + Math.random() * 110; f.until = now + 500;
+      f.target = Math.max(min, Math.min(max, f.x + (Math.random() - 0.5) * 240));
+    } else {
+      f.mode = 'stand'; f.until = now + 700 + Math.random() * 1600;
+    }
+  }
+  let want = 0;
+  if (!dancing && (f.mode === 'walk' || (f.mode === 'hop' && airborne))) {
+    const gap = f.target - f.x;
+    if (Math.abs(gap) > 4) want = Math.sign(gap) * (f.mode === 'walk' ? 85 : 110);
+    else if (f.mode === 'walk') f.until = 0;
+  }
+  f.vx += (want - f.vx) * Math.min(1, dt * 10);
+  f.x = Math.max(min, Math.min(max, f.x + f.vx * dt));
+  if (Math.abs(f.vx) > 8) f.face = Math.sign(f.vx);
 }
 
 setInterval(() => {
-  if (lobby.hidden || document.hidden) return;
   const now = performance.now();
+  const dt = Math.min(0.1, (now - podiumLast) / 1000); podiumLast = now;
+  if (lobby.hidden || document.hidden) return;
+  const width = podium.clientWidth;
   for (const f of podiumFigures.values()) {
-    if (now >= f.nextDance) { f.danceFrom = now; f.nextDance = now + 4500 + Math.random() * 2500; }
+    if (now >= f.nextDance && f.y === 0) { f.danceFrom = now; f.nextDance = now + 4500 + Math.random() * 2500; f.mode = 'stand'; f.until = now + 1900; }
     const since = (now - f.danceFrom) / 1000;
+    const dancing = since < BRAWL_EMOTE.duration;
+    if (!reducedMotion.matches) podiumMove(f, dt, now, width, dancing);
+    f.el.style.transform = `translate(${Math.round(f.x)}px, ${-Math.round(f.y)}px) translateX(-50%)`;
     const g = f.g;
     g.clearRect(0, 0, 160, 120);
     g.fillStyle = '#10303a88'; g.fillRect(38, 115, 84, 4);        // a little shadow on the box
-    if (since < BRAWL_EMOTE.duration) {
+    if (dancing) {
       drawDance({ character: f.character, face: f.face, invuln: 0, emoteTime: BRAWL_EMOTE.duration - since }, 80, 116, g);
     } else {
-      const bob = Math.round(Math.sin(now / 520 + f.nextDance) * 1.2);       // breathing while waiting
+      const walking = f.mode === 'walk' && Math.abs(f.vx) > 20 && f.y === 0;
+      const bob = walking ? -Math.round(Math.abs(Math.sin(now / 95)) * 3) : Math.round(Math.sin(now / 520 + f.nextDance) * 1.2);
       drawFighter(g, f.character, 80, 116 + bob, 2.1, f.face, null, 0, false);
     }
   }
-}, 66);
+}, 33);
 
 let lastFrame = performance.now();
 function render(now) {
