@@ -1,5 +1,6 @@
 import { BRAWL, BRAWL_WORLDS, BRAWL_TEAMS, BRAWL_ROLL, BRAWL_EMOTE, BRAWL_EMOTE_LINES, FIGHTERS, ATTACKS, CAPE, EGG_LAY, isBrawlRollInvulnerable, makeFighter, knockback } from '/shared/brawl.js';
 import { BrawlTimeline, BrawlPredictor } from '/shared/brawl-client.js';
+import { music } from '/music.js';
 
 const canvas = document.querySelector('#game');
 const ctx = canvas.getContext('2d');
@@ -25,6 +26,8 @@ backdropImage.src = '/brawl-mountains.png';
 const TEAM_NAMES = { red: 'rød', blue: 'blå' };
 const lobby = document.querySelector('#lobby');
 const splashScreen = document.querySelector('#splash');
+const countdownEl = document.querySelector('#countdown');
+const muteButton = document.querySelector('#muteButton');
 const playButton = document.querySelector('#play');
 const readyButton = document.querySelector('#ready');
 const nameInput = document.querySelector('#name');
@@ -1246,6 +1249,13 @@ function leaveSplash() {
   if (!lobby.hidden) nameInput.focus({ preventScroll: true });
 }
 playButton.addEventListener('click', leaveSplash);
+function showMuteState() {
+  muteButton.textContent = music.muted ? '♪ av' : '♪ på';
+  muteButton.setAttribute('aria-pressed', String(!music.muted));
+  muteButton.title = music.muted ? 'Slå på musikken' : 'Slå av musikken';
+}
+muteButton.addEventListener('click', () => { music.setMuted(!music.muted); showMuteState(); });
+showMuteState();
 document.body.classList.add('splash');
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -1397,12 +1407,15 @@ function render(now) {
       if (p.spectator) continue;
       drawPlayer(p.id === myId && local ? { ...p, ...local } : p, 0);
     }
-    if (state.phase === 'countdown') {
-      ctx.fillStyle = shownWorld === 'nightcity' ? '#17132999' : '#15394e99'; ctx.fillRect(0, 0, 960, 540);
-      ctx.textAlign = 'center'; ctx.font = '900 118px ui-monospace,monospace';
-      ctx.fillStyle = '#fff2ce'; ctx.fillText(String(Math.ceil(state.countdown)), 480, 285);
-    }
   }
+  // The countdown dims the whole window (a page overlay, because the game canvas is letterboxed on wide or tall screens).
+  const counting = !splash && state?.phase === 'countdown';
+  countdownEl.hidden = !counting;
+  if (counting) {
+    const number = String(Math.max(1, Math.ceil(state.countdown)));
+    if (countdownEl.textContent !== number) countdownEl.textContent = number;
+  }
+  music.set(!splash && (state?.phase === 'countdown' || state?.phase === 'playing') ? 'battle' : 'title');
   for (const effect of waftEffects) effect.life -= dt;
   waftEffects = waftEffects.filter(effect => effect.life > 0);
   for (const effect of dinEffects) effect.life -= dt;
