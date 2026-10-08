@@ -1273,16 +1273,19 @@ function updatePodium(players, teamMode) {
     seen.add(p.id);
     let f = podiumFigures.get(p.id);
     if (!f) {
-      const el = document.createElement('div'); el.className = 'podFigure';
+      const el = document.createElement('div'); el.className = 'podFigure';          // stays on the box
+      const shadow = document.createElement('div'); shadow.className = 'podShadow';  // stays on the box when the fighter jumps
+      const body = document.createElement('div'); body.className = 'podBody';        // goes up and down with the hops
       const label = document.createElement('div'); label.className = 'podName';
       const stateIcon = document.createElement('span'); stateIcon.className = 'podState';
       const text = document.createElement('span'); text.className = 'podText';
       label.append(stateIcon, text);
       const figure = document.createElement('canvas'); figure.width = 160; figure.height = 120;
-      el.append(label, figure);
+      body.append(label, figure);
+      el.append(shadow, body);
       const now = performance.now();
       const x = width * (index + 1) / (players.length + 1);
-      f = { el, stateIcon, text, g: figure.getContext('2d'), ready: false, character: p.character,
+      f = { el, body, shadow, stateIcon, text, g: figure.getContext('2d'), ready: false, character: p.character,
         x, y: 0, vx: 0, vy: 0, face: x < width / 2 ? 1 : -1, mode: 'stand', until: now + 300 + Math.random() * 1500, target: x,
         danceFrom: -1e9, nextDance: now + 800 + Math.random() * 3500 };
       f.g.imageSmoothingEnabled = false;
@@ -1342,10 +1345,11 @@ setInterval(() => {
     const since = (now - f.danceFrom) / 1000;
     const dancing = since < BRAWL_EMOTE.duration;
     if (!reducedMotion.matches) podiumMove(f, dt, now, width, dancing);
-    f.el.style.transform = `translate(${Math.round(f.x)}px, ${-Math.round(f.y)}px) translateX(-50%)`;
+    f.el.style.transform = `translateX(${Math.round(f.x)}px) translateX(-50%)`;
+    f.body.style.transform = `translateY(${-Math.round(f.y)}px)`;
+    f.shadow.style.transform = `scaleX(${Math.max(0.45, 1 - f.y / 140).toFixed(2)})`;       // smaller the higher the hop
     const g = f.g;
     g.clearRect(0, 0, 160, 120);
-    g.fillStyle = '#10303a88'; g.fillRect(38, 115, 84, 4);        // a little shadow on the box
     if (dancing) {
       drawDance({ character: f.character, face: f.face, invuln: 0, emoteTime: BRAWL_EMOTE.duration - since }, 80, 116, g);
     } else {
