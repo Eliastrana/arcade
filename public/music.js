@@ -275,18 +275,29 @@ function stopCurrent(fade = 0.5) {
 
 // Your own audio files, by track name. If the file is not there (for example a fresh copy from GitHub, where the
 // files are left out on purpose), the built-in tune plays instead.
-const FILES = { title: '/music/menu.mp3' };
+const FILES = { title: '/music/menu.mp3', battle: '/music/battle.mp3' };
+const LOOP_FADE = 1.6;     // seconds: a file fades out at its end and in again at its start, so the loop has no hard seam
 
 function startFile(name, url) {
   const ctx = audioContext();
   const audio = new Audio(url);
   audio.loop = true; audio.preload = 'auto';
-  const gain = ctx.createGain();
+  const gain = ctx.createGain();                       // fades the whole track when switching tracks
   gain.gain.setValueAtTime(0, ctx.currentTime);
   gain.gain.linearRampToValueAtTime(1, ctx.currentTime + 0.8);
-  ctx.createMediaElementSource(audio).connect(gain);
+  const seam = ctx.createGain();                       // fades the end and the start of every pass through the file
+  ctx.createMediaElementSource(audio).connect(seam);
+  seam.connect(gain);
   gain.connect(master);
   const player = { name, gain, audio, timer: 0 };
+  // Every 80 ms, set the seam volume from where the file is: quiet at its very start and end, full in between.
+  player.timer = setInterval(() => {
+    const length = audio.duration;
+    if (!Number.isFinite(length) || length < LOOP_FADE * 4 || audio.paused) return;
+    const t = audio.currentTime;
+    const volume = Math.max(0, Math.min(1, t / LOOP_FADE, (length - t) / LOOP_FADE));
+    seam.gain.setTargetAtTime(volume, ctx.currentTime, 0.05);
+  }, 80);
   const begin = () => audio.play().catch(() => {});           // refused until the first click; unlock() tries again
   audio.addEventListener('error', () => { if (current === player) { stopCurrent(0.05); startSynth(name); } });
   begin();
