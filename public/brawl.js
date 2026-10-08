@@ -22,6 +22,7 @@ backdropImage.onload = () => {
   drawWorldPreviews();
 };
 backdropImage.src = '/brawl-mountains.png';
+const TEAM_NAMES = { red: 'rød', blue: 'blå' };
 const lobby = document.querySelector('#lobby');
 const splashScreen = document.querySelector('#splash');
 const playButton = document.querySelector('#play');
@@ -74,17 +75,17 @@ function send(t, values = {}) {
 
 function showNetStats() {
   if (socket?.readyState !== WebSocket.OPEN || document.hidden) {
-    netStats.textContent = 'ping — · loss —';
+    netStats.textContent = 'ping — · tap —';
     netStats.className = '';
     return;
   }
   const averagePing = pingTimes.length ? pingTimes.reduce((sum, ms) => sum + ms, 0) / pingTimes.length : null;
   const ping = averagePing === null ? '—' : `${Math.round(averagePing)} ms`;
   const loss = probeResults.length ? Math.round(100 * probeResults.filter(ok => !ok).length / probeResults.length) : null;
-  netStats.textContent = `${probeMode === 'http' ? 'web ping' : 'ping'} ${ping} · loss ${loss === null ? '—' : `${loss}%`}`;
+  netStats.textContent = `${probeMode === 'http' ? 'web-ping' : 'ping'} ${ping} · tap ${loss === null ? '—' : `${loss}%`}`;
   netStats.title = probeMode === 'http'
-    ? 'web ping measures an HTTPS request, not the game socket; loss counts requests that failed or took over 2.5 seconds'
-    : 'loss counts WebSocket probes unanswered after 2.5 seconds; it is not raw IP packet loss';
+    ? 'Web-ping måler en HTTPS-forespørsel, ikke spillforbindelsen. Tap teller forespørsler som feilet eller tok over 2,5 sekunder.'
+    : 'Tap teller WebSocket-målinger som ikke ble besvart innen 2,5 sekunder. Det er ikke ekte IP-pakketap.';
   netStats.className = loss >= 10 || averagePing >= 180 ? 'bad'
     : loss >= 3 || averagePing >= 100 ? 'warn' : '';
 }
@@ -173,7 +174,7 @@ function connect() {
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
   socket = new WebSocket(`${protocol}//${location.host}/?game=brawl`);
   socket.onopen = () => {
-    status.textContent = 'connected';
+    status.textContent = 'tilkoblet';
     timeline.clear(); predictor.reset(); inputVersion = 1; inputSeq = 0; queuedJump = false; queuedUpair = false;
     combatFeatures = false; throwsEnabled = false; teamsEnabled = false; emotesEnabled = false;
     stopEmoteSpeech();
@@ -217,10 +218,10 @@ function connect() {
       if (availableWorlds.length) send('brawl-world', { world: selectedWorld });
       if (nameInput.value.trim()) send('brawl-name', { name: nameInput.value.trim() });
     } else if (m.t === 'welcome') {
-      status.textContent = 'game server restart pending';
-      hint.textContent = 'the new game files are deployed. waiting for the trashcan game service to restart.';
+      status.textContent = 'spillserveren starter snart på nytt';
+      hint.textContent = 'De nye spillfilene er lagt ut. Venter på at spilltjenesten på trashcan starter på nytt.';
       readyButton.disabled = true;
-      readyButton.textContent = 'server update pending';
+      readyButton.textContent = 'serveroppdatering venter';
       pendingRestart = true;
       socket.close();
     } else if (m.t === 'brawl-state') {
@@ -244,9 +245,9 @@ function connect() {
     emoteButton.hidden = true;
     stopEmoteSpeech();
     myId = null; state = null; lobby.hidden = splash;
-    status.textContent = pendingRestart ? 'game server restart pending' : 'reconnecting…';
+    status.textContent = pendingRestart ? 'spillserveren starter snart på nytt' : 'kobler til igjen …';
     readyButton.disabled = true;
-    readyButton.textContent = pendingRestart ? 'server update pending' : 'reconnecting…';
+    readyButton.textContent = pendingRestart ? 'serveroppdatering venter' : 'kobler til igjen …';
     setTimeout(connect, pendingRestart ? 10000 : 1500);
   };
 }
@@ -339,7 +340,7 @@ function speakEmote(event) {
   try {
     stopEmoteSpeech(); // Don't queue stale lines when several fighters dance together.
     const utterance = new SpeechSynthesisUtterance(line.speech);
-    utterance.lang = 'en-US';
+    utterance.lang = 'nb-NO';
     utterance.pitch = line.pitch;
     utterance.rate = line.rate;
     utterance.volume = 0.85;
@@ -368,15 +369,15 @@ function onState(s) {
   const self = s.players.find(p => p.id === myId);
   emoteButton.hidden = !emotesEnabled || s.phase !== 'playing' || !self || self.spectator || self.stocks <= 0;
   emoteButton.disabled = !self || self.respawn > 0 || !self.grounded || self.emoteCooldown > 0;
-  emoteButton.textContent = self?.emoteCooldown > 0 ? `dance ${self.emoteCooldown.toFixed(1)}s` : 'dance · e';
+  emoteButton.textContent = self?.emoteCooldown > 0 ? `dans ${self.emoteCooldown.toFixed(1)}s` : 'dans · e';
   const matchWorld = Object.hasOwn(BRAWL_WORLDS, s.world) ? s.world : 'dolomittene';
   const shownWorld = s.phase === 'playing' || s.phase === 'countdown' ? matchWorld : selectedWorld;
   document.body.dataset.world = shownWorld;
   worldStatus.textContent = s.phase === 'playing' || s.phase === 'countdown'
-    ? BRAWL_WORLDS[matchWorld] : `world vote · ${BRAWL_WORLDS[selectedWorld]}`;
+    ? BRAWL_WORLDS[matchWorld] : `verdensvalg · ${BRAWL_WORLDS[selectedWorld]}`;
   for (const card of worldCards) {
     const votes = s.players.filter(p => !p.spectator && p.worldVote === card.key).length;
-    card.count.textContent = `${votes} ${votes === 1 ? 'vote' : 'votes'}`;
+    card.count.textContent = `${votes} ${votes === 1 ? 'stemme' : 'stemmer'}`;
   }
   const uiSignature = JSON.stringify([myId, s.phase, s.winner, s.winnerTeam, s.mode, s.friendlyFire,
     s.hostId, Math.floor(s.elapsed),
@@ -385,10 +386,10 @@ function onState(s) {
   lastUiSignature = uiSignature;
   const me = s.players.find(p => p.id === myId);
   lobby.hidden = splash || s.phase === 'playing' || s.phase === 'countdown';
-  status.textContent = me?.spectator && (s.phase === 'playing' || s.phase === 'countdown') ? 'spectating · next match' :
-    s.phase === 'playing' ? `live · ${formatTime(s.elapsed)}` :
-    s.phase === 'countdown' ? 'match starting' :
-    s.phase === 'results' ? 'match complete' : 'lobby · waiting for fighters';
+  status.textContent = me?.spectator && (s.phase === 'playing' || s.phase === 'countdown') ? 'ser på · neste kamp' :
+    s.phase === 'playing' ? `direkte · ${formatTime(s.elapsed)}` :
+    s.phase === 'countdown' ? 'kampen starter' :
+    s.phase === 'results' ? 'kampen er over' : 'lobby · venter på spillere';
   const sorted = [...s.players].sort((a, b) => a.id - b.id);
   const active = sorted.filter(p => !p.spectator);
   const teamMode = s.mode === 'teams';
@@ -396,8 +397,8 @@ function onState(s) {
     blue: active.filter(p => p.team === 'blue').length };
   const bothTeams = teamCounts.red > 0 && teamCounts.blue > 0;
   const canConfigure = myId === s.hostId && s.phase === 'lobby';
-  matchRule.textContent = teamMode ? `team battle · friendly fire ${s.friendlyFire ? 'on' : 'off'} · 3 stocks`
-    : 'first to survive · 3 stocks';
+  matchRule.textContent = teamMode ? `lagkamp · lagskade ${s.friendlyFire ? 'på' : 'av'} · 3 liv`
+    : 'siste mann står · 3 liv';
   modeFfa.classList.toggle('selected', !teamMode);
   modeTeams.classList.toggle('selected', teamMode);
   modeFfa.setAttribute('aria-pressed', String(!teamMode));
@@ -407,40 +408,40 @@ function onState(s) {
   friendlyFireButton.disabled = !canConfigure;
   friendlyFireButton.classList.toggle('selected', !!s.friendlyFire);
   friendlyFireButton.setAttribute('aria-pressed', String(!!s.friendlyFire));
-  friendlyFireButton.textContent = `friendly fire: ${s.friendlyFire ? 'on' : 'off'}`;
+  friendlyFireButton.textContent = `lagskade: ${s.friendlyFire ? 'på' : 'av'}`;
   teamGrid.hidden = !teamMode;
   for (const button of teamButtons) {
     const team = button.dataset.team;
-    button.textContent = `${team} ${teamCounts[team]}/2`;
+    button.textContent = `${TEAM_NAMES[team]} ${teamCounts[team]}/2`;
     button.classList.toggle('selected', me?.team === team);
     button.setAttribute('aria-pressed', String(me?.team === team));
     button.disabled = !me || me.spectator || s.phase !== 'lobby' ||
       (me.team !== team && teamCounts[team] >= 2);
   }
-  modeHint.textContent = canConfigure ? 'you are room host · choose match rules'
-    : 'room host chooses mode and friendly fire';
+  modeHint.textContent = canConfigure ? 'du er romvert · velg kampregler'
+    : 'romverten velger kampmodus og lagskade';
   roster.replaceChildren(...sorted.map(p => {
     const div = document.createElement('div');
     div.className = `rosterName${p.ready ? ' ready' : ''}${p.id === myId ? ' mine' : ''}${teamMode && !p.spectator ? ` ${p.team}` : ''}`;
-    div.textContent = `${p.spectator ? 'watching · ' : p.ready ? '✓ ' : '○ '}${teamMode && !p.spectator ? `${p.team} · ` : ''}${p.name} · ${(FIGHTERS[p.character]?.label || 'mario').toLowerCase()}`;
+    div.textContent = `${p.spectator ? 'ser på · ' : p.ready ? '✓ ' : '○ '}${teamMode && !p.spectator ? `${TEAM_NAMES[p.team]} · ` : ''}${p.name} · ${(FIGHTERS[p.character]?.label || 'mario').toLowerCase()}`;
     return div;
   }));
   card.classList.toggle('results', s.phase === 'results');
   updatePodium(sorted.filter(p => !p.spectator), teamMode);
-  if (!sorted.length) hint.textContent = 'waiting for players…';
-  else if (me?.spectator) hint.textContent = 'room full. you will join a future match when a slot opens.';
+  if (!sorted.length) hint.textContent = 'venter på spillere …';
+  else if (me?.spectator) hint.textContent = 'Rommet er fullt. Du blir med i en senere kamp når det blir en ledig plass.';
   else if (s.phase === 'results') {
     const victor = sorted.find(p => p.id === s.winner);
-    hint.textContent = teamMode && s.winnerTeam ? `${s.winnerTeam} team wins! press start for another round.`
-      : victor ? `${victor.name} wins! press start for another round.` : 'round ended. press start to play again.';
-  } else hint.textContent = `${active.filter(p => p.ready).length}/${active.length} ready · ${teamMode && !bothTeams ? 'need one red and one blue' : 'two players needed · up to four can fight'}`;
+    hint.textContent = teamMode && s.winnerTeam ? `${TEAM_NAMES[s.winnerTeam]} lag vinner! Trykk start for en ny runde.`
+      : victor ? `${victor.name} vinner! Trykk start for en ny runde.` : 'Runden er over. Trykk start for å spille igjen.';
+  } else hint.textContent = `${active.filter(p => p.ready).length}/${active.length} klare · ${teamMode && !bothTeams ? 'trenger ett rødt og ett blått lag' : 'minst to spillere · opptil fire kan slåss'}`;
   readyButton.disabled = !me || me.spectator;
-  readyButton.textContent = me?.spectator ? 'waiting for a slot' :
-    s.phase === 'results' ? 'start next match' : me?.ready ? 'cancel ready' : 'start / ready up';
+  readyButton.textContent = me?.spectator ? 'venter på plass' :
+    s.phase === 'results' ? 'start neste kamp' : me?.ready ? 'avbryt klar' : 'start / klar';
   if (s.phase === 'results') {
     const victor = sorted.find(p => p.id === s.winner);
-    document.querySelector('.card h1').textContent = teamMode && s.winnerTeam ? `${s.winnerTeam} team wins!`
-      : victor ? `${victor.name} wins!` : 'draw!';
+    document.querySelector('.card h1').textContent = teamMode && s.winnerTeam ? `${TEAM_NAMES[s.winnerTeam]} lag vinner!`
+      : victor ? `${victor.name} vinner!` : 'uavgjort!';
   } else document.querySelector('.card h1').textContent = 'Slagbrødre';
   scores.replaceChildren(...active.map(p => {
     const div = document.createElement('div');
@@ -448,7 +449,7 @@ function onState(s) {
     div.dataset.playerId = p.id;
     div.style.setProperty('--color', teamMode ? BRAWL_TEAMS[p.team] : FIGHTERS[p.character]?.color || '#fff');
     const who = document.createElement('div'); who.className = 'who';
-    who.textContent = `${teamMode ? `${p.team} · ` : ''}${p.name}${p.id === myId ? ' · you' : ''}`;
+    who.textContent = `${teamMode ? `${TEAM_NAMES[p.team]} · ` : ''}${p.name}${p.id === myId ? ' · deg' : ''}`;
     const damage = document.createElement('div'); damage.className = 'damage';
     damage.style.color = p.percent >= 120 ? '#ff695c' : p.percent >= 65 ? '#ffc868' : '#fff7ec';
     damage.textContent = `${p.percent}%`;
@@ -460,7 +461,7 @@ function onState(s) {
     damage.append(stocks); div.append(who, damage, shieldTrack);
     if (p.character === 'wario') {
       const meter = document.createElement('div'); meter.className = 'waftMeter';
-      const label = document.createElement('span'); label.textContent = 'waft';
+      const label = document.createElement('span'); label.textContent = 'fis';
       const track = document.createElement('div'); track.className = 'waftTrack';
       const fill = document.createElement('div'); fill.className = 'waftFill';
       track.append(fill); meter.append(label, track); div.append(meter);
@@ -478,7 +479,7 @@ function onState(s) {
   }
   throwPad.hidden = !throwsEnabled || !s.players.some(p => p.id === myId && p.grabTarget);
   if (previousPhase !== s.phase) {
-    if (s.phase === 'playing') { setFlash('go!', 850); sound('go'); }
+    if (s.phase === 'playing') { setFlash('kjør!', 850); sound('go'); }
     previousPhase = s.phase;
   }
   for (const event of s.events) {
@@ -488,11 +489,11 @@ function onState(s) {
       sound('hit', event.power);
     } else if (event.type === 'ko') {
       burst(event.x, Math.max(35, Math.min(470, event.y)), '#fff3bf', 30, 360);
-      setFlash(event.stocks > 0 ? 'stock lost!' : 'k.o.!', 900);
+      setFlash(event.stocks > 0 ? 'liv tapt!' : 'k.o.!', 900);
       shake = 13; sound('ko');
     } else if (event.type === 'swing') sound('swing');
     else if (event.type === 'block') { burst(event.x, event.y - 38, '#9be7ff', 8, 140); sound('block'); }
-    else if (event.type === 'shieldbreak') { burst(event.x, event.y - 38, '#fff5b7', 24, 260); setFlash('shield break!', 750); sound('shieldbreak'); }
+    else if (event.type === 'shieldbreak') { burst(event.x, event.y - 38, '#fff5b7', 24, 260); setFlash('skjoldet knust!', 750); sound('shieldbreak'); }
     else if (event.type === 'grab') { burst(event.x, event.y, '#ffd3a6', 10, 160); sound('grab'); }
     else if (event.type === 'throw') { burst(event.x, event.y, '#ffe0a1', 15, 225); sound('throw'); }
     else if (event.type === 'recovery') { burst(event.x, event.y, '#b2eaff', 12, 170); sound('recovery'); }
@@ -525,7 +526,7 @@ function onState(s) {
       speakEmote(event);
     }
     else if (event.type === 'jump' || event.type === 'doublejump') sound('jump');
-    else if (event.type === 'go') setFlash('go!', 850);
+    else if (event.type === 'go') setFlash('kjør!', 850);
   }
 }
 
@@ -560,7 +561,7 @@ const worldCards = Object.entries(BRAWL_WORLDS).map(([key, label]) => {
   const preview = document.createElement('canvas'); preview.width = 240; preview.height = 135;
   const details = document.createElement('span');
   const title = document.createElement('strong'); title.textContent = label;
-  const count = document.createElement('small'); count.textContent = '0 votes';
+  const count = document.createElement('small'); count.textContent = '0 stemmer';
   details.append(title, count); button.append(preview, details);
   button.addEventListener('click', () => {
     selectedWorld = key;
@@ -1073,7 +1074,7 @@ function drawPlayer(p, lag) {
     ctx.beginPath(); ctx.moveTo(x + p.face * 15, y - 43);
     ctx.lineTo(x + p.face * 37, y - 48); ctx.stroke();
     ctx.fillStyle = '#ffe0a1'; ctx.font = 'bold 11px ui-monospace,monospace'; ctx.textAlign = 'center';
-    ctx.fillText('throw!', x, y - 111);
+    ctx.fillText('kast!', x, y - 111);
     ctx.fillStyle = '#25454b'; ctx.fillRect(x - 27, y - 105, 54, 5);
     ctx.fillStyle = '#ffe0a1'; ctx.fillRect(x - 27, y - 105, Math.max(0, Math.min(54, p.grabTimer / 1.2 * 54)), 5);
   }
@@ -1095,7 +1096,7 @@ function drawPlayer(p, lag) {
       ctx.stroke();
     }
   }
-  const label = p.id === myId ? 'you' : p.name;
+  const label = p.id === myId ? 'du' : p.name;
   ctx.font = 'bold 12px ui-monospace,monospace'; ctx.textAlign = 'center';
   const textWidth = ctx.measureText(label).width;
   ctx.fillStyle = '#153748e8'; ctx.fillRect(x - textWidth / 2 - 9, y - 90, textWidth + 18, 20);
@@ -1284,7 +1285,7 @@ function updatePodium(players, teamMode) {
     f.ready = p.ready;
     f.stateIcon.classList.toggle('on', p.ready);
     f.stateIcon.textContent = p.ready ? '✓' : '…';
-    f.stateIcon.title = p.ready ? 'ready' : 'not ready';
+    f.stateIcon.title = p.ready ? 'klar' : 'ikke klar';
     f.el.classList.toggle('mine', p.id === myId);
     f.el.style.setProperty('--team', teamMode && BRAWL_TEAMS[p.team] ? BRAWL_TEAMS[p.team] : '');
   });

@@ -13,18 +13,18 @@ export const BRAWL = Object.freeze({
 
 export const BRAWL_WORLDS = Object.freeze({
   dolomittene: 'dolomittene',
-  nightcity: 'night city',
+  nightcity: 'natteby',
 });
 
 export const BRAWL_TEAMS = Object.freeze({ red: '#f27a72', blue: '#79beff' });
 
 export const FIGHTERS = Object.freeze({
-  mario: { label: 'Mario', color: '#ee4a4d', accent: '#3988dd', speed: 284, weight: 1.03, jump: 585, air: 0.95, special: 'Cape · reverses foes', recovery: 760, recoveryDrift: 290 },
-  yoshi: { label: 'Yoshi', color: '#70d765', accent: '#f5f3db', speed: 296, weight: 0.94, jump: 618, air: 1.06, special: 'Egg lay · tongue catch', recovery: 820, recoveryDrift: 240 },
-  pikachu: { label: 'Pikachu', color: '#f8d74d', accent: '#db644b', speed: 315, weight: 0.88, jump: 603, air: 1.12, special: 'Thunder · sky strike', recovery: 865, recoveryDrift: 330 },
-  isabelle: { label: 'Isabelle', color: '#f7d88b', accent: '#9bce8c', speed: 278, weight: 0.9, jump: 605, air: 1.04, special: 'Fishing rod', recovery: 840, recoveryDrift: 310 },
-  wario: { label: 'Wario', color: '#f5d34d', accent: '#9162b6', speed: 265, weight: 1.13, jump: 570, air: 0.9, special: 'Waft · charges over time', recovery: 735, recoveryDrift: 260 },
-  zelda: { label: 'Zelda', color: '#c998ed', accent: '#f1d68f', speed: 274, weight: 0.93, jump: 598, air: 1.02, special: "Din's Fire", recovery: 855, recoveryDrift: 305 },
+  mario: { label: 'Mario', color: '#ee4a4d', accent: '#3988dd', speed: 284, weight: 1.03, jump: 585, air: 0.95, special: 'Kappe · snur fiender', recovery: 760, recoveryDrift: 290 },
+  yoshi: { label: 'Yoshi', color: '#70d765', accent: '#f5f3db', speed: 296, weight: 0.94, jump: 618, air: 1.06, special: 'Egglegging · tungefangst', recovery: 820, recoveryDrift: 240 },
+  pikachu: { label: 'Pikachu', color: '#f8d74d', accent: '#db644b', speed: 315, weight: 0.88, jump: 603, air: 1.12, special: 'Torden · luftslag', recovery: 865, recoveryDrift: 330 },
+  isabelle: { label: 'Isabelle', color: '#f7d88b', accent: '#9bce8c', speed: 278, weight: 0.9, jump: 605, air: 1.04, special: 'Fiskestang', recovery: 840, recoveryDrift: 310 },
+  wario: { label: 'Wario', color: '#f5d34d', accent: '#9162b6', speed: 265, weight: 1.13, jump: 570, air: 0.9, special: 'Fis · lades opp over tid', recovery: 735, recoveryDrift: 260 },
+  zelda: { label: 'Zelda', color: '#c998ed', accent: '#f1d68f', speed: 274, weight: 0.93, jump: 598, air: 1.02, special: 'Dins ild', recovery: 855, recoveryDrift: 305 },
 });
 
 export const DIN_FIRE = Object.freeze({ radius: 62, damage: 10, base: 175, growth: 525, angle: 73 });
@@ -36,12 +36,12 @@ export const BRAWL_ROLL = Object.freeze({ duration: 0.34, cooldown: 0.8, speed: 
   invulnStart: 0.05, invulnEnd: 0.25, shieldCost: 8 });
 export const BRAWL_EMOTE = Object.freeze({ duration: 1.8, cooldown: 2.4 });
 export const BRAWL_EMOTE_LINES = Object.freeze({
-  mario: { text: "it's-a me, mario!", speech: "it's a me, mario!", pitch: 1.15, rate: 1.08 },
-  yoshi: { text: 'yoshi!', speech: 'yoshi!', pitch: 1.8, rate: 1.2 },
-  pikachu: { text: 'pika pika!', speech: 'pika pika!', pitch: 1.75, rate: 1.28 },
-  isabelle: { text: "let's dance!", speech: "let's dance!", pitch: 1.45, rate: 1.08 },
+  mario: { text: 'det er meg, Mario!', speech: 'det er meg, Mario!', pitch: 1.15, rate: 1.08 },
+  yoshi: { text: 'Yoshi!', speech: 'Yoshi!', pitch: 1.8, rate: 1.2 },
+  pikachu: { text: 'Pika pika!', speech: 'Pika pika!', pitch: 1.75, rate: 1.28 },
+  isabelle: { text: 'la oss danse!', speech: 'la oss danse!', pitch: 1.45, rate: 1.08 },
   wario: { text: 'wah-ha-ha!', speech: 'wah ha ha!', pitch: 0.7, rate: 0.9 },
-  zelda: { text: 'for hyrule!', speech: 'for hyrule!', pitch: 1.05, rate: 0.95 },
+  zelda: { text: 'for Hyrule!', speech: 'for Hyrule!', pitch: 1.05, rate: 0.95 },
 });
 
 export const ATTACKS = Object.freeze({

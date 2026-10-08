@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="en">
+<html lang="nb">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Slagbrødrene</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<meta name="description" content="a live four-player platform fighter with three-stock battles.">
+<meta name="description" content="Et plattformspill for opptil fire spillere, med tre liv hver.">
 <style>
   :root{--paper:#f5f7e8;--ink:#173446;--moss:#a8c66e;--gold:#e8e6a6;--blue:#b9e7f2}
   *{box-sizing:border-box}
@@ -78,14 +78,14 @@
 </head>
 <body>
 <canvas id="worldBackground" width="960" height="540" aria-hidden="true"></canvas>
-<canvas id="game" width="960" height="540" aria-label="live platform fighting game"></canvas>
-<div id="hud"><div id="hudTop"><div><div id="brand">Slagbrødre</div><div id="status">connecting…</div><div id="netStats" title="loss counts WebSocket probes unanswered after 2.5 seconds; it is not raw IP packet loss">ping — · loss —</div></div><div id="hudRight"><div id="matchRule">first to survive · 3 stocks</div><div id="worldStatus">dolomittene</div></div></div><div id="flash"></div><div id="scores"></div></div>
-<div id="controls">a/d or ←/→ move · w/space jump · s+jump drop · j quick · k smash · l special · e dance<span id="extraControls" hidden> · h grab<span id="throwHint" hidden> · direction + h throw</span> · hold shift shield · shift + ←/→ roll · i up air</span></div>
-<button id="emoteButton" type="button" aria-label="dance emote" hidden>dance · e</button>
+<canvas id="game" width="960" height="540" aria-label="plattformkamp i sanntid"></canvas>
+<div id="hud"><div id="hudTop"><div><div id="brand">Slagbrødre</div><div id="status">kobler til …</div><div id="netStats" title="Tap teller WebSocket-målinger som ikke ble besvart innen 2,5 sekunder. Det er ikke ekte IP-pakketap.">ping — · tap —</div></div><div id="hudRight"><div id="matchRule">siste mann står · 3 liv</div><div id="worldStatus">dolomittene</div></div></div><div id="flash"></div><div id="scores"></div></div>
+<div id="controls">a/d eller ←/→ gå · w/mellomrom hopp · s+hopp slipp gjennom · j rask · k smash · l spesial · e dans<span id="extraControls" hidden> · h grip<span id="throwHint" hidden> · retning + h kast</span> · hold shift for skjold · shift + ←/→ rull · i luftangrep opp</span></div>
+<button id="emoteButton" type="button" aria-label="dans" hidden>dans · e</button>
 <div id="splash"><div class="splashTitle"><h1>Slagbrødrene</h1><p>Slåss mot vennene dine</p></div><button id="play" type="button" autofocus>Spill</button></div>
-<div id="lobby" class="overlay" hidden><div class="card"><div id="podium" aria-hidden="true"></div><h1>Slagbrødrene</h1><input id="name" maxlength="16" placeholder="your name" aria-label="player name"><div id="characterGrid"></div><div id="worldIntro">choose world · most votes wins · ties are random</div><div id="worldGrid"></div><div id="matchSetup" hidden><div id="modeGrid"><button id="modeFfa" class="modeChoice" type="button">free for all</button><button id="modeTeams" class="modeChoice" type="button">team battle</button><button id="friendlyFire" class="modeChoice" type="button" hidden>friendly fire: off</button></div><div id="teamGrid" hidden><span>your team</span><button class="teamChoice red" data-team="red" type="button">red 0/2</button><button class="teamChoice blue" data-team="blue" type="button">blue 0/2</button></div><div id="modeHint">room host chooses match rules</div></div><div id="roster"></div><button id="ready">connecting…</button><div id="lobbyHint">waiting for the server…</div></div></div>
-<div id="touch" aria-label="touch game controls"><button id="tl" aria-label="move left">◀</button><button id="tr" aria-label="move right">▶</button><button id="tj" aria-label="jump">▲</button><button id="ta" aria-label="quick attack">j</button><button id="ts" aria-label="smash attack">k</button><button id="tp" aria-label="special attack">l</button><button id="tg" aria-label="grab" hidden>grab</button><button id="tshield" aria-label="hold to shield" hidden>shield</button><button id="tu" aria-label="up air recovery" hidden>up</button></div>
-<div id="throwPad" aria-label="throw direction" hidden><span>throw</span><button data-x="-1" data-y="0" aria-label="throw left">←</button><button data-x="0" data-y="-1" aria-label="throw up">↑</button><button data-x="0" data-y="1" aria-label="throw down">↓</button><button data-x="1" data-y="0" aria-label="throw right">→</button></div>
-<script type="module" src="/brawl.js?v=22"></script>
+<div id="lobby" class="overlay" hidden><div class="card"><div id="podium" aria-hidden="true"></div><h1>Slagbrødrene</h1><input id="name" maxlength="16" placeholder="ditt navn" aria-label="spillernavn"><div id="characterGrid"></div><div id="worldIntro">velg verden · flest stemmer vinner · uavgjort trekkes tilfeldig</div><div id="worldGrid"></div><div id="matchSetup" hidden><div id="modeGrid"><button id="modeFfa" class="modeChoice" type="button">alle mot alle</button><button id="modeTeams" class="modeChoice" type="button">lagkamp</button><button id="friendlyFire" class="modeChoice" type="button" hidden>lagskade: av</button></div><div id="teamGrid" hidden><span>ditt lag</span><button class="teamChoice red" data-team="red" type="button">rød 0/2</button><button class="teamChoice blue" data-team="blue" type="button">blå 0/2</button></div><div id="modeHint">romverten velger kampregler</div></div><div id="roster"></div><button id="ready">kobler til …</button><div id="lobbyHint">venter på serveren …</div></div></div>
+<div id="touch" aria-label="berøringskontroller"><button id="tl" aria-label="gå til venstre">◀</button><button id="tr" aria-label="gå til høyre">▶</button><button id="tj" aria-label="hopp">▲</button><button id="ta" aria-label="rask angrep">j</button><button id="ts" aria-label="smash-angrep">k</button><button id="tp" aria-label="spesialangrep">l</button><button id="tg" aria-label="grip" hidden>grip</button><button id="tshield" aria-label="hold for skjold" hidden>skjold</button><button id="tu" aria-label="luftangrep opp" hidden>opp</button></div>
+<div id="throwPad" aria-label="kastretning" hidden><span>kast</span><button data-x="-1" data-y="0" aria-label="kast til venstre">←</button><button data-x="0" data-y="-1" aria-label="kast opp">↑</button><button data-x="0" data-y="1" aria-label="kast ned">↓</button><button data-x="1" data-y="0" aria-label="kast til høyre">→</button></div>
+<script type="module" src="/brawl.js?v=23"></script>
 </body>
 </html>

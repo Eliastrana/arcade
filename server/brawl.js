@@ -93,7 +93,7 @@ export function createBrawlRoom() {
   function join(ws) {
     const spectator = participants().length >= MAX_PLAYERS || phase === 'playing' || phase === 'countdown';
     const id = nextId++;
-    const p = makeFighter(id, `Player ${id}`, 'mario', participants().length);
+    const p = makeFighter(id, `Spiller ${id}`, 'mario', participants().length);
     p.spectator = spectator;
     if (!spectator) p.team = openTeam();
     p.input = { move: 0, down: false, shield: false, lastAt: 0, seq: 0 };
