@@ -1,6 +1,8 @@
 # Arcade
 
-Small browser games served at arcade.eliastrana.no: an arena shooter, Skyhook and Brawl. Node.js server with WebSockets (`ws`), three.js in the browser.
+Slagbrødrene (a Smash-style brawler for 2–4 players) at arcade.eliastrana.no: opening the site goes straight into the game.
+Node.js server with WebSockets (`ws`), three.js in the browser. The older Arena and Skyhook games are still in the repo at
+`/arena.html` and `/skyhook.html`, but nothing links to them.
 
 ```bash
 npm ci
