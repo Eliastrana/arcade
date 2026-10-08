@@ -244,6 +244,9 @@ let context = null, master = null, current = null, wanted = null;
 let muted = false;
 try { muted = localStorage.getItem('brawl-music') === 'off'; } catch { /* storage unavailable */ }
 const VOLUME = 0.5;
+const DIM = 0.4;                    // how loud the music is while a menu is open, compared with normal
+let dimmed = false;
+const level = () => muted ? 0 : VOLUME * (dimmed ? DIM : 1);
 
 function audioContext() {
   if (!context) {
@@ -252,7 +255,7 @@ function audioContext() {
     context = new Context();
     const compressor = context.createDynamicsCompressor();
     master = context.createGain();
-    master.gain.value = muted ? 0 : VOLUME;
+    master.gain.value = level();
     master.connect(compressor); compressor.connect(context.destination);
   }
   return context;
@@ -334,7 +337,13 @@ export const music = {
   setMuted(value) {
     muted = !!value;
     try { localStorage.setItem('brawl-music', muted ? 'off' : 'on'); } catch { /* storage unavailable */ }
-    if (master) master.gain.setTargetAtTime(muted ? 0 : VOLUME, context.currentTime, 0.08);
+    if (master) master.gain.setTargetAtTime(level(), context.currentTime, 0.08);
+  },
+  /** Turn the music down while a menu is open, and back up when it closes. Safe to call every frame. */
+  dim(value) {
+    if (value === dimmed) return;
+    dimmed = value;
+    if (master) master.gain.setTargetAtTime(level(), context.currentTime, 0.3);     // eases over about a second, like the menu's fade-in
   },
 };
 

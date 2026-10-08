@@ -1416,6 +1416,7 @@ function render(now) {
     if (countdownEl.textContent !== number) countdownEl.textContent = number;
   }
   music.set(!splash && (state?.phase === 'countdown' || state?.phase === 'playing') ? 'battle' : 'title');
+  music.dim(!splash && !lobby.hidden);                  // quieter behind the menu (the lobby form)
   for (const effect of waftEffects) effect.life -= dt;
   waftEffects = waftEffects.filter(effect => effect.life > 0);
   for (const effect of dinEffects) effect.life -= dt;
