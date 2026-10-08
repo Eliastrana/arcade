@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>trashcan arena</title>
+<style>
+  :root { --panel:rgba(18,22,21,.84); --line:#3b4541; --fg:#edf0e8; --dim:#a0aaa3; --accent:#d7b56d; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; overflow:hidden; background:#65727a; color:var(--fg);
+              font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace; user-select:none; }
+  #app { position:fixed; inset:0; }
+  canvas { display:block; cursor:crosshair; }
+  .hud { position:fixed; z-index:10; background:var(--panel); border:1px solid var(--line);
+         border-radius:10px; padding:9px 12px; backdrop-filter:blur(8px); }
+  .dim { color:var(--dim); }
+
+  #top { top:12px; left:12px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  #top b { color:var(--accent); }
+  #dot { width:8px; height:8px; border-radius:50%; background:#f05; transition:background .3s; }
+  .team-badge { padding:2px 7px; border:1px solid var(--line); border-radius:999px;
+                color:var(--dim); font-size:10px; }
+  .team-badge.red { color:#ff8b92; border-color:#713b41; background:rgba(110,25,33,.28); }
+  .team-badge.blue { color:#82c1ff; border-color:#345a7c; background:rgba(23,61,98,.30); }
+  #sound { padding:3px 7px; border:1px solid #49554f; border-radius:6px; background:#151b19;
+           color:#b9cbbf; font:10px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;
+           cursor:pointer; }
+  #sound:hover { border-color:var(--accent); color:var(--accent); }
+  #sound.muted { color:#78827d; }
+  input { background:#0b0f15; color:var(--fg); border:1px solid var(--line);
+          border-radius:6px; padding:4px 8px; font:inherit; width:105px; }
+
+  #side { top:12px; right:12px; min-width:190px; }
+  #side h3 { margin:0 0 6px; font-size:10px; color:var(--dim); font-weight:600; }
+  table { width:100%; border-collapse:collapse; }
+  td { padding:2px 0; }
+  td:nth-child(2) { text-align:right; color:var(--accent); width:28px; }
+  td.d { text-align:right; color:var(--dim); width:28px; }
+  .team-mark { display:inline-block; width:6px; height:6px; margin:0 7px 1px 0; border-radius:50%; }
+  .team-mark.red { background:#ff5f69; box-shadow:0 0 7px rgba(255,95,105,.5); }
+  .team-mark.blue { background:#55a9ff; box-shadow:0 0 7px rgba(85,169,255,.5); }
+
+  #feed { position:fixed; top:168px; right:12px; z-index:10; text-align:right; }
+  #feed div { margin-bottom:3px; text-shadow:0 1px 3px #000; }
+
+  #hp { bottom:16px; right:16px; width:236px; }
+  /* lift clear of the touch controls when they're on screen */
+  @media (hover:none) and (pointer:coarse) { #hp { bottom:214px; } }
+  #hpbar { height:12px; background:#0b0f15; border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+  #hpfill { height:100%; width:100%; background:linear-gradient(90deg,#5fbd72,#d7b56d); transition:width .12s; }
+  #hprow { display:flex; justify-content:space-between; margin-bottom:5px; font-size:11px; }
+
+  #weaponHud { bottom:16px; left:16px; display:flex; gap:6px; padding:7px; }
+  #weaponHud button { border:1px solid #46504c; border-radius:6px; padding:6px 9px;
+    background:#111715; color:#87918b; font:10px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;
+    cursor:pointer; }
+  #weaponHud button.active { color:#f3d58d; border-color:#9b7b3e; background:#292318;
+    box-shadow:0 0 12px rgba(215,181,109,.14); }
+  @media (hover:none) and (pointer:coarse) { #weaponHud { bottom:214px; left:16px; } }
+
+  /* crosshair */
+  #cross { position:fixed; left:50%; top:50%; width:20px; height:20px; margin:-10px 0 0 -10px;
+           z-index:9; pointer-events:none; }
+  #cross::before, #cross::after { content:''; position:absolute; background:rgba(255,255,255,.85);
+           box-shadow:0 0 3px #000; }
+  #cross::before { left:9px; top:0; width:2px; height:20px; }
+  #cross::after  { top:9px; left:0; height:2px; width:20px; }
+
+  /* An actual scope: opaque body with a hard-edged circular lens, a ring,
+     and a reticle clipped inside the glass. */
+  #scope { --r: 31vmin; position:fixed; inset:0; z-index:9; pointer-events:none;
+           opacity:0; transition:opacity .09s; }
+  body.ads #scope { opacity:1; }
+  body.ads #cross { display:none; }
+
+  #scope .mask { position:absolute; inset:0;
+    background:radial-gradient(circle at 50% 50%,
+      rgba(0,0,0,0) 0 var(--r), rgba(6,8,11,.985) calc(var(--r) + 1px) 100%); }
+
+  #scope .lens, #scope .ring {
+    position:absolute; left:50%; top:50%;
+    width:calc(var(--r) * 2); height:calc(var(--r) * 2);
+    margin-left:calc(var(--r) * -1); margin-top:calc(var(--r) * -1);
+    border-radius:50%;
+  }
+  #scope .lens { overflow:hidden; }                 /* clips the reticle to the glass */
+  #scope .ring { box-shadow:inset 0 0 0 3px rgba(10,13,17,.95),
+                            inset 0 0 46px rgba(0,0,0,.6),
+                            inset 0 0 0 4px rgba(150,190,220,.10); }
+
+  #scope .lens i { position:absolute; background:rgba(0,0,0,.8); display:block; }
+  #scope .lens .h { left:0; right:0; top:50%; height:1px; }
+  #scope .lens .v { top:0; bottom:0; left:50%; width:1px; }
+  #scope .lens .dot { left:50%; top:50%; width:9px; height:9px; margin:-5px 0 0 -5px;
+                      background:none; border:1px solid rgba(0,0,0,.85); border-radius:50%; }
+
+  .overlay { position:fixed; inset:0; z-index:20; display:flex; align-items:center;
+             justify-content:center; flex-direction:column; gap:8px; }
+  /* must not intercept the click - it sits above the canvas, and the canvas
+     is what needs the gesture to request pointer lock */
+  #lock { background:rgba(8,11,16,.72); backdrop-filter:blur(3px); pointer-events:none; }
+  #lock h2 { margin:0; color:var(--accent); font-size:19px; }
+  #dead { display:none; background:rgba(60,8,16,.35); pointer-events:none; }
+  #dead h2 { margin:0; color:#ff5470; font-size:30px; text-shadow:0 2px 12px #000; }
+
+  #teamPick { z-index:25; background:rgba(7,10,12,.76); backdrop-filter:blur(7px); }
+  .team-card { width:min(520px,calc(100vw - 34px)); padding:26px; border:1px solid #4c5551;
+               border-radius:14px; background:rgba(18,22,21,.94); box-shadow:0 24px 80px rgba(0,0,0,.45);
+               text-align:center; }
+  .team-card .eyebrow { color:var(--accent); font-size:10px; }
+  .team-card h2 { margin:5px 0 17px; font-size:23px; }
+  .team-buttons { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .team-buttons button { height:88px; border-radius:10px; color:#fff; font:700 16px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+                         cursor:pointer; transition:transform .12s,filter .12s,border-color .12s; }
+  .team-buttons button:hover { transform:translateY(-2px); filter:brightness(1.12); }
+  .team-buttons button.joining { transform:scale(.98); filter:saturate(.65); }
+  .team-buttons .red { border:1px solid #9c4650; background:linear-gradient(145deg,#8e2e38,#45191e); }
+  .team-buttons .blue { border:1px solid #397ab1; background:linear-gradient(145deg,#23679f,#15334d); }
+  .team-buttons small { display:block; margin-top:9px; font-size:11px; font-weight:400; opacity:.72; }
+  .team-note { margin:14px 0 0; color:var(--dim); font-size:11px; }
+  @media (max-width:520px) { .team-buttons { grid-template-columns:1fr; } .team-buttons button { height:68px; } }
+
+  #pad { display:none; position:fixed; bottom:16px; right:16px; z-index:10;
+         grid-template-columns:repeat(3,50px); gap:6px; }
+  #pad button, #fire { background:rgba(26,32,41,.9); color:var(--fg); border:1px solid var(--line);
+         border-radius:9px; font:inherit; height:50px; }
+  #fire { display:none; position:fixed; bottom:78px; left:16px; z-index:10; width:92px;
+          color:#ff8080; border-color:#553; }
+  #ads  { display:none; position:fixed; bottom:16px; left:16px; z-index:10; width:92px;
+          color:#8fd6ff; border-color:#345; }
+  #jump { display:none; position:fixed; bottom:140px; left:16px; z-index:10; width:92px;
+          color:#9ae6a0; border-color:#354; }
+  #arcadeBack { position:fixed; z-index:12; left:50%; bottom:16px; transform:translateX(-50%);
+    color:#b8c1bb; background:rgba(12,17,16,.84); border:1px solid #46504c; border-radius:7px;
+    padding:7px 11px; text-decoration:none; font-size:10px; }
+  #arcadeBack:hover { color:var(--accent); border-color:var(--accent); }
+  @media (hover:none) and (pointer:coarse) { #pad { display:grid; } #fire, #ads, #jump { display:block; } #lock { display:none !important; } }
+</style>
+<script type="importmap">
+{ "imports": { "three": "/vendor/three.module.js" } }
+</script>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="loading" class="overlay" style="background:#1b2426; z-index:30;">
+    <div style="color:var(--accent);">loading character&hellip;</div>
+  </div>
+  <div id="cross"></div>
+  <div id="scope">
+    <div class="mask"></div>
+    <div class="lens"><i class="h"></i><i class="v"></i><i class="dot"></i></div>
+    <div class="ring"></div>
+  </div>
+
+  <div id="top" class="hud">
+    <span id="dot"></span><b>trashcan arena</b>
+    <span id="teamBadge" class="team-badge">spectating</span>
+    <button id="sound" type="button" aria-pressed="true">sound on</button>
+    <span class="dim">l-click shoot &middot; r-click scope &middot; 1/2 or wheel switch &middot; w/s ladders &middot; space jump &middot; landing roll breaks falls</span>
+    <input id="name" maxlength="14" placeholder="name">
+  </div>
+
+  <div id="side" class="hud">
+    <h3>leaderboard &mdash; k / d</h3>
+    <table><tbody id="board"></tbody></table>
+  </div>
+  <div id="feed"></div>
+
+  <div id="hp" class="hud">
+    <div id="hprow"><span id="myname">&mdash;</span><span id="hpnum">100</span></div>
+    <div id="hpbar"><div id="hpfill"></div></div>
+  </div>
+
+  <div id="weaponHud" class="hud" aria-label="weapon selection">
+    <button type="button" data-weapon="1" class="active">1&nbsp; rifle</button>
+    <button type="button" data-weapon="2">2&nbsp; shotgun</button>
+  </div>
+
+  <div id="lock" class="overlay">
+    <h2>click to play</h2>
+    <div class="dim">wasd move &middot; w/s climb ladders &middot; space jumps off &middot; double-tap wasd to roll<br>roll just before or after landing to break a fall &middot; mouse aim &middot; l-click shoot &middot; r-click scope &middot; 1/2 or wheel switch</div>
+    <div class="dim" style="opacity:.6">no pointer lock? drag to aim, f to shoot</div>
+  </div>
+  <div id="teamPick" class="overlay">
+    <div class="team-card">
+      <div class="eyebrow">choose your unit</div>
+      <h2>join the battle</h2>
+      <div class="team-buttons">
+        <button class="red" data-team="red">red unit<small><span id="redCount">0</span> deployed</small></button>
+        <button class="blue" data-team="blue">blue unit<small><span id="blueCount">0</span> deployed</small></button>
+      </div>
+      <p class="team-note">friendly fire is disabled. each unit deploys from its own side of the arena.</p>
+    </div>
+  </div>
+  <div id="dead" class="overlay"><h2>eliminated</h2><div class="dim" id="respawnIn">respawning&hellip;</div></div>
+  <div id="fallback" class="hud dim" style="display:none; bottom:72px; left:50%; transform:translateX(-50%);">
+    pointer lock unavailable &mdash; drag to aim, space to shoot
+  </div>
+
+  <div id="pad">
+    <span></span><button data-dir="up">&#9650;</button><span></span>
+    <button data-dir="left">&#9664;</button><button data-dir="down">&#9660;</button><button data-dir="right">&#9654;</button>
+  </div>
+  <button id="fire">fire</button>
+  <button id="ads">scope</button>
+  <button id="jump">jump</button>
+  <a id="arcadeBack" href="/">← arcade</a>
+
+  <script type="module" src="/main.js?v=soldier-only-v13"></script>
+</body>
+</html>

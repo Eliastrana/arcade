@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>stock brawl · trashcan arcade</title>
+<meta name="description" content="a live four-player platform fighter with three-stock battles.">
+<style>
+  :root{--paper:#f5f7e8;--ink:#173446;--moss:#a8c66e;--gold:#e8e6a6;--blue:#b9e7f2}
+  *{box-sizing:border-box}
+  html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#2a536d;color:var(--paper);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;touch-action:none;user-select:none}
+  #worldBackground{position:fixed;inset:0;z-index:0;display:block;width:100%;height:100%;object-fit:cover;image-rendering:pixelated;image-rendering:crisp-edges;pointer-events:none}
+  #game{position:relative;z-index:1;display:block;width:100%;height:100%;object-fit:contain;image-rendering:pixelated;image-rendering:crisp-edges;background:transparent}
+  #hud{position:fixed;inset:0;z-index:2;pointer-events:none}
+  #hudTop{position:absolute;top:12px;left:16px;right:16px;display:flex;justify-content:space-between;align-items:start;gap:10px;text-shadow:2px 2px #173446,1px 1px #173446;font-size:12px}
+  #brand{color:#f6f6dc;font-weight:900;font-size:15px}#status{color:#e4f6f1;margin-top:5px}#hudRight{text-align:right;color:#edf7e9}
+  #netStats{color:#d4f4ce;margin-top:5px;pointer-events:auto}#netStats.warn{color:#ffeda7}#netStats.bad{color:#ffb69c}
+  #home{pointer-events:auto;display:inline-block;color:var(--paper);text-decoration:none;background:#1d4051d9;border:2px solid #b6d9d1;padding:8px 10px;margin-bottom:5px;box-shadow:3px 3px 0 #153547}
+  #emoteButton{position:fixed;top:110px;right:16px;z-index:3;pointer-events:auto;border:2px solid #e8e6a6;background:#315e5bdc;color:#fff8ce;box-shadow:3px 3px 0 #173b42;padding:9px 12px;font:900 12px ui-monospace,SFMono-Regular,Menlo,monospace;cursor:pointer;touch-action:manipulation}#emoteButton[hidden]{display:none}#emoteButton:disabled{opacity:.65;cursor:default}
+  #scores{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);display:flex;gap:8px;align-items:end;max-width:calc(100% - 20px)}
+  .score{width:clamp(118px,19vw,185px);background:#173847e8;border:2px solid var(--color);padding:7px 9px 6px;box-shadow:4px 5px 0 #16332d;text-shadow:1px 2px #102e3a;min-height:62px}
+  .score.me{border-width:3px}.score.out{opacity:.48}.score .who{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--color)}.score .damage{font-size:24px;font-weight:900;line-height:1.1}.score .damage small{font-size:12px}.score .stock{float:right;font-size:12px;color:var(--gold);padding-top:8px}
+  .shieldTrack{height:4px;margin-top:5px;background:#3d5961}.shieldFill{height:100%;width:100%;background:#a7e8ff;transition:width .07s linear}.score.guarding .shieldFill{background:#dceba1}
+  .waftMeter{display:flex;align-items:center;gap:5px;margin-top:4px;color:#e8e9aa;font-size:9px}.waftTrack{flex:1;height:4px;background:#3d5961}.waftFill{height:100%;width:0;background:#c3e97d}
+  #flash{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);font-weight:1000;font-size:clamp(44px,11vw,110px);white-space:nowrap;color:#f8f8e5;text-shadow:5px 5px #37727b,9px 9px #17394a;pointer-events:none}
+  #flash:empty{display:none}
+  .overlay{position:fixed;inset:0;display:grid;place-items:center;background:#15394ea8;backdrop-filter:blur(2px);padding:14px;z-index:4;overflow:auto;touch-action:pan-y}.overlay[hidden]{display:none}
+  .card{width:min(790px,100%);background:#193c4de8;border:3px solid #b8d8c9;box-shadow:10px 10px 0 #112f39;padding:16px 22px;text-align:center}
+  .eyebrow{color:#dceca9;font-size:10px;font-weight:bold}.card h1{font-size:clamp(28px,6vw,54px);line-height:.95;margin:7px 0 7px;color:#f6f8e8;text-shadow:4px 4px #4e786a}.card p{font-size:12px;line-height:1.5;color:#e3f1e6;margin:5px auto 10px;max-width:650px}
+  #name{width:min(240px,100%);background:#102e3c;border:2px solid #85b7b5;color:white;padding:9px;text-align:center;font:12px ui-monospace,SFMono-Regular,Menlo,monospace;outline:none;margin-bottom:10px}#name:focus{border-color:var(--gold)}
+  #characterGrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px;margin:2px auto 9px}
+  .fighterChoice{border:2px solid #749ea0;background:#244c59;color:var(--paper);cursor:pointer;min-height:140px;padding:6px;transition:transform .15s,border-color .15s,background .15s}
+  .fighterChoice:hover{transform:translateY(-3px);border-color:#d8f0d2}.fighterChoice.selected{border-color:var(--gold);background:#42694f;box-shadow:inset 0 0 0 2px #a8c66e}
+  .fighterChoice:disabled{opacity:.45;cursor:not-allowed}.fighterChoice:disabled:hover{transform:none;border-color:#749ea0}
+  .fighterChoice canvas{display:block;width:76px;height:92px;margin:auto;image-rendering:pixelated}.fighterChoice strong{display:block;margin:0 0 3px;font-size:15px}.fighterChoice small{display:block;color:#cae5df;font-size:10px}
+  #worldIntro{font-size:10px;color:#dceca9;margin:0 0 5px}#worldGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 auto 8px}#worldIntro[hidden],#worldGrid[hidden]{display:none}
+  .worldChoice{display:flex;align-items:center;gap:10px;min-width:0;text-align:left;border:2px solid #749ea0;background:#244c59;color:var(--paper);padding:5px;cursor:pointer;font:inherit}.worldChoice:hover{border-color:#d8f0d2}.worldChoice.selected{border-color:var(--gold);background:#42694f;box-shadow:inset 0 0 0 2px #a8c66e}.worldChoice:disabled{opacity:.45;cursor:not-allowed}
+  .worldChoice canvas{display:block;flex:none;width:96px;height:54px;image-rendering:pixelated}.worldChoice strong{display:block;font-size:12px}.worldChoice small{display:block;color:#cae5df;font-size:10px;margin-top:4px}
+  #matchSetup{margin:0 auto 8px}#matchSetup[hidden],#teamGrid[hidden],#friendlyFire[hidden]{display:none}
+  #modeGrid,#teamGrid{display:flex;justify-content:center;align-items:center;gap:8px;margin-top:7px;flex-wrap:wrap}
+  .modeChoice,.teamChoice{border:2px solid #759c9a;background:#244c59;color:#f4f7e9;padding:7px 12px;font:900 11px ui-monospace,SFMono-Regular,Menlo,monospace;cursor:pointer;min-height:34px}
+  .modeChoice.selected{border-color:#e8e6a6;background:#42694f}.modeChoice:disabled,.teamChoice:disabled{cursor:default;opacity:.65}.modeChoice.selected:disabled,.teamChoice.selected:disabled{opacity:1}
+  .teamChoice.red{border-color:#f27a72}.teamChoice.blue{border-color:#79beff}.teamChoice.selected.red{background:#7a373e}.teamChoice.selected.blue{background:#315b84}
+  #teamGrid span,#modeHint{color:#d2e7df;font-size:10px}#modeHint{margin-top:6px}
+  .rosterName.red{border-left:4px solid #f27a72}.rosterName.blue{border-left:4px solid #79beff}
+  body[data-world="nightcity"]{background:#211b3d}body[data-world="nightcity"] .overlay{background:#171329a8}body[data-world="nightcity"] .card{background:#292044ea;border-color:#c6a4e8;box-shadow:10px 10px 0 #171329}body[data-world="nightcity"] .worldChoice.selected{background:#5c3c6d;border-color:#ffd7a5;box-shadow:inset 0 0 0 2px #e497c2}body[data-world="nightcity"] #ready{background:#f1c58d;color:#322346;box-shadow:5px 5px #8a547a}
+  #roster{display:flex;justify-content:center;gap:7px;min-height:32px;flex-wrap:wrap;margin:5px 0 8px}.rosterName{background:#123442;padding:7px 9px;border:1px solid #759c9a;font-size:10px}.rosterName.ready{border-color:#a9db8f;color:#d7f4bd}.rosterName.mine{box-shadow:0 0 0 1px var(--gold)}
+  #ready{border:0;background:#abc86e;color:#193847;padding:13px 28px;font:900 14px ui-monospace,SFMono-Regular,Menlo,monospace;cursor:pointer;box-shadow:5px 5px #486b4c}#ready:hover{filter:brightness(1.1);transform:translateY(-2px)}#ready:disabled{filter:grayscale(1);cursor:default}
+  #lobbyHint{margin:13px 0 0;color:#d6e9df;font-size:11px}
+  #controls{position:fixed;bottom:92px;left:50%;transform:translateX(-50%);z-index:2;color:#f1f5df;text-shadow:1px 2px #102d39;font-size:10px;max-width:calc(100% - 20px);width:max-content;text-align:center;line-height:1.45;pointer-events:none;background:#143746d9;border:2px solid #9cbf9c;padding:5px 9px;box-shadow:3px 3px 0 #173b42}
+  #controls span[hidden]{display:none}
+  #touch{display:none;position:fixed;inset:0;pointer-events:none;z-index:3}#touch button{pointer-events:auto;position:absolute;width:52px;height:52px;border:2px solid #d1e4d6;background:#214c5adc;border-radius:8px;color:#f6f8e8;font:900 15px ui-monospace,SFMono-Regular,Menlo,monospace;touch-action:none}#touch button[hidden]{display:none}#tl{left:14px;bottom:16px}#tr{left:73px;bottom:16px}#tj{right:184px;bottom:16px}#ta{right:124px;bottom:16px;background:#476b57db!important}#ts{right:65px;bottom:16px;background:#62734adb!important}#tp{right:7px;bottom:16px;background:#496b7bdb!important}#tg{right:124px;bottom:76px;background:#786444db!important}#tshield{right:65px;bottom:76px;background:#376b78db!important}#tu{right:7px;bottom:76px;background:#5b8057db!important}
+  #throwPad{display:none;position:fixed;right:7px;bottom:204px;z-index:3;align-items:center;gap:4px;color:#e8eda9;font-size:10px;text-shadow:2px 2px #163747}#throwPad[hidden]{display:none}#throwPad button{width:43px;height:43px;background:#426b65db;border:2px solid #e8eda9;border-radius:8px;color:white;font:900 18px ui-monospace,SFMono-Regular,Menlo,monospace;touch-action:none}
+  @media(max-width:650px){.card{padding:15px}#characterGrid{grid-template-columns:repeat(3,minmax(0,1fr))}.fighterChoice{min-height:126px}.fighterChoice canvas{width:62px;height:76px}.fighterChoice strong{font-size:12px}.fighterChoice small{font-size:9px}.worldChoice canvas{width:78px;height:44px}.worldChoice strong{font-size:10px}.worldChoice small{font-size:9px}.score{padding:5px;width:clamp(75px,22vw,120px);min-height:54px}.score .damage{font-size:17px}.score .stock{font-size:9px}.score .who{font-size:8px}#hudTop{font-size:10px}#brand{font-size:12px}}
+  @media(max-width:390px){#characterGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media(max-width:530px){#worldGrid{grid-template-columns:1fr}.worldChoice canvas{width:96px;height:54px}}
+  @media(max-height:850px){.overlay{display:block}.card{margin:auto}}
+  @media(max-height:700px){.card{padding:9px 16px}.card h1{font-size:38px;margin:3px 0}.card p{font-size:10px;margin:3px auto 5px}#name{padding:6px;margin-bottom:5px}#characterGrid{gap:6px;margin:2px auto 5px}.fighterChoice{min-height:108px;padding:3px}.fighterChoice canvas{width:60px;height:72px}.fighterChoice strong{font-size:12px}.fighterChoice small{font-size:9px}.worldChoice{padding:3px}.worldChoice canvas{width:72px;height:41px}#worldGrid{margin-bottom:4px}#modeGrid,#teamGrid{margin-top:4px}.modeChoice,.teamChoice{min-height:29px;padding:4px 8px}#modeHint{margin-top:3px}#roster{margin:4px 0;min-height:26px}#ready{padding:9px 16px}#lobbyHint{margin:6px 0 0}}
+  @media(hover:none),(pointer:coarse){#touch{display:block}#controls{display:none}#scores{bottom:139px}#throwPad:not([hidden]){display:flex}}
+  @media(max-width:360px) and (hover:none),(max-width:360px) and (pointer:coarse){#tj{right:124px;bottom:136px}#tg{right:65px;bottom:136px}#tu{right:7px;bottom:136px}#tshield{right:7px;bottom:16px}#scores{bottom:199px}#throwPad{bottom:263px}}
+</style>
+</head>
+<body>
+<canvas id="worldBackground" width="960" height="540" aria-hidden="true"></canvas>
+<canvas id="game" width="960" height="540" aria-label="live platform fighting game"></canvas>
+<div id="hud"><div id="hudTop"><div><div id="brand">Slagbrødre</div><div id="status">connecting…</div><div id="netStats" title="loss counts WebSocket probes unanswered after 2.5 seconds; it is not raw IP packet loss">ping — · loss —</div></div><div id="hudRight"><a id="home" href="/">← arcade</a><div id="matchRule">first to survive · 3 stocks</div><div id="worldStatus">dolomittene</div></div></div><div id="flash"></div><div id="scores"></div></div>
+<div id="controls">a/d or ←/→ move · w/space jump · s+jump drop · j quick · k smash · l special · e dance<span id="extraControls" hidden> · h grab<span id="throwHint" hidden> · direction + h throw</span> · hold shift shield · shift + ←/→ roll · i up air</span></div>
+<button id="emoteButton" type="button" aria-label="dance emote" hidden>dance · e</button>
+<div id="lobby" class="overlay"><div class="card"><div class="eyebrow"></div><h1>Slagbrødrene</h1><p>Velg en fighter og stem på en verden. Når alle trykker start, begynner kampen med tre liv. Skade øker prosentmåleren din, jo høyere prosent, desto lenger blir du slått.</p><input id="name" maxlength="16" placeholder="your name" aria-label="player name"><div id="characterGrid"></div><div id="worldIntro">choose world · most votes wins · ties are random</div><div id="worldGrid"></div><div id="matchSetup" hidden><div id="modeGrid"><button id="modeFfa" class="modeChoice" type="button">free for all</button><button id="modeTeams" class="modeChoice" type="button">team battle</button><button id="friendlyFire" class="modeChoice" type="button" hidden>friendly fire: off</button></div><div id="teamGrid" hidden><span>your team</span><button class="teamChoice red" data-team="red" type="button">red 0/2</button><button class="teamChoice blue" data-team="blue" type="button">blue 0/2</button></div><div id="modeHint">room host chooses match rules</div></div><div id="roster"></div><button id="ready">connecting…</button><div id="lobbyHint">waiting for the server…</div></div></div>
+<div id="touch" aria-label="touch game controls"><button id="tl" aria-label="move left">◀</button><button id="tr" aria-label="move right">▶</button><button id="tj" aria-label="jump">▲</button><button id="ta" aria-label="quick attack">j</button><button id="ts" aria-label="smash attack">k</button><button id="tp" aria-label="special attack">l</button><button id="tg" aria-label="grab" hidden>grab</button><button id="tshield" aria-label="hold to shield" hidden>shield</button><button id="tu" aria-label="up air recovery" hidden>up</button></div>
+<div id="throwPad" aria-label="throw direction" hidden><span>throw</span><button data-x="-1" data-y="0" aria-label="throw left">←</button><button data-x="0" data-y="-1" aria-label="throw up">↑</button><button data-x="0" data-y="1" aria-label="throw down">↓</button><button data-x="1" data-y="0" aria-label="throw right">→</button></div>
+<script type="module" src="/brawl.js?v=19"></script>
+</body>
+</html>
