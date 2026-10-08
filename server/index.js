@@ -20,7 +20,7 @@ const ROOT = path.join(HERE, '..');
 const PORT = Number(process.env.PORT) || 3001;
 
 // ---------------------------------------------------------------- static
-const TYPES = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css', '.png':'image/png', '.webp':'image/webp', '.glb':'model/gltf-binary' };
+const TYPES = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css', '.png':'image/png', '.webp':'image/webp', '.svg':'image/svg+xml', '.glb':'model/gltf-binary' };
 const ROUTES = {
   '/':                       path.join(ROOT, 'public/brawl.html'),
   '/arena':                  path.join(ROOT, 'public/arena.html'),
