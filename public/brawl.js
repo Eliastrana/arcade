@@ -28,6 +28,7 @@ const lobby = document.querySelector('#lobby');
 const splashScreen = document.querySelector('#splash');
 const countdownEl = document.querySelector('#countdown');
 const muteButton = document.querySelector('#muteButton');
+const volumeSlider = document.querySelector('#volume');
 const playButton = document.querySelector('#play');
 const readyButton = document.querySelector('#ready');
 const nameInput = document.querySelector('#name');
@@ -1253,8 +1254,16 @@ function showMuteState() {
   muteButton.textContent = music.muted ? '♪ av' : '♪ på';
   muteButton.setAttribute('aria-pressed', String(!music.muted));
   muteButton.title = music.muted ? 'Slå på musikken' : 'Slå av musikken';
+  volumeSlider.value = String(Math.round(music.volume * 100));
+  volumeSlider.setAttribute('aria-valuetext', `${volumeSlider.value} prosent`);
 }
 muteButton.addEventListener('click', () => { music.setMuted(!music.muted); showMuteState(); });
+volumeSlider.addEventListener('input', () => {
+  const value = Number(volumeSlider.value) / 100;
+  music.setVolume(value);
+  if (music.muted && value > 0) music.setMuted(false);       // moving the slider up turns the music back on
+  showMuteState();
+});
 showMuteState();
 document.body.classList.add('splash');
 

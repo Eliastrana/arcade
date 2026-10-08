@@ -243,10 +243,12 @@ const LOOKAHEAD = 0.25;                          // seconds of music scheduled i
 let context = null, master = null, current = null, wanted = null;
 let muted = false;
 try { muted = localStorage.getItem('brawl-music') === 'off'; } catch { /* storage unavailable */ }
-const VOLUME = 0.35;
+const MAX_GAIN = 0.7;               // what the slider's far right gives; the default (half way) is the level used so far, 0.35
+let userVolume = 0.5;                // 0..1, the slider
+try { const saved = parseFloat(localStorage.getItem('brawl-volume')); if (saved >= 0 && saved <= 1) userVolume = saved; } catch { /* storage unavailable */ }
 const DIM = 0.4;                    // how loud the music is while a menu is open, compared with normal
 let dimmed = false;
-const level = () => muted ? 0 : VOLUME * (dimmed ? DIM : 1);
+const level = () => muted ? 0 : MAX_GAIN * userVolume * (dimmed ? DIM : 1);
 
 function audioContext() {
   if (!context) {
@@ -345,6 +347,13 @@ export const music = {
     if (current?.audio?.paused) current.audio.play().catch(() => {});
   },
   get muted() { return muted; },
+  get volume() { return userVolume; },
+  /** The volume slider, 0..1. */
+  setVolume(value) {
+    userVolume = Math.max(0, Math.min(1, value));
+    try { localStorage.setItem('brawl-volume', String(userVolume)); } catch { /* storage unavailable */ }
+    if (master) master.gain.setTargetAtTime(level(), context.currentTime, 0.05);
+  },
   setMuted(value) {
     muted = !!value;
     try { localStorage.setItem('brawl-music', muted ? 'off' : 'on'); } catch { /* storage unavailable */ }
