@@ -243,7 +243,7 @@ const LOOKAHEAD = 0.25;                          // seconds of music scheduled i
 let context = null, master = null, current = null, wanted = null;
 let muted = false;
 try { muted = localStorage.getItem('brawl-music') === 'off'; } catch { /* storage unavailable */ }
-const VOLUME = 0.5;
+const VOLUME = 0.35;
 const DIM = 0.4;                    // how loud the music is while a menu is open, compared with normal
 let dimmed = false;
 const level = () => muted ? 0 : VOLUME * (dimmed ? DIM : 1);
