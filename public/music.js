@@ -1,14 +1,16 @@
 // Chiptune music for Slagbrødrene, played with the browser's own synthesiser (no audio files).
 // Two original tracks in an old-console adventure style:
-//   "title"  - a calm, heroic overworld tune for the title screen and the lobby (A minor, 100 bpm)
-//   "battle" - a fast, driving fight tune with drums for the match (E minor, 152 bpm)
-// Voices: two pulse waves (melody and a quiet arpeggio), a triangle bass, and noise for drums.
+//   "title"  - a heroic, marching fanfare for the title screen and the lobby (A minor, 116 bpm, light drums)
+//   "battle" - an all-out action fight tune for the match (D minor, 174 bpm): galloping bass, power-chord stabs,
+//              doubled lead, drum fills and cymbal crashes
+// Voices: pulse waves (lead, thickening layer, arpeggio, chord stabs), a triangle bass, and noise and sines for drums.
 
 const SEMITONE = { C: 0, 'C#': 1, D: 2, 'D#': 3, E: 4, F: 5, 'F#': 6, G: 7, 'G#': 8, A: 9, 'A#': 10, B: 11 };
+const FLATS = { Db: 'C#', Eb: 'D#', Gb: 'F#', Ab: 'G#', Bb: 'A#' };
 const midi = name => {
-  const m = /^([A-G]#?)(\d)$/.exec(name);
+  const m = /^([A-G][#b]?)(\d)$/.exec(name);
   if (!m) throw new Error(`bad note ${name}`);
-  return 12 * (Number(m[2]) + 1) + SEMITONE[m[1]];
+  return 12 * (Number(m[2]) + 1) + SEMITONE[FLATS[m[1]] || m[1]];
 };
 const hz = name => 440 * 2 ** ((midi(name) - 69) / 12);
 const transpose = (name, semitones) => {
@@ -37,7 +39,7 @@ function parseMelody(bars) {
 
 // ---------------------------------------------------------------------------------------------------------------- title
 const TITLE = {
-  bpm: 100,
+  bpm: 116,
   melody: [
     // A: the theme
     'E5:4 A4:2 C5:2 E5:4 D5:2 C5:2',      // Am
@@ -66,74 +68,89 @@ const TITLE = {
   ],
   roots: [['A2', 'E3'], ['F2', 'C3'], ['C3', 'G3'], ['G2', 'D3'], ['A2', 'E3'], ['F2', 'C3'], ['G2', 'D3'], ['E2', 'B2'],
     ['D3', 'A3'], ['A2', 'E3'], ['F2', 'C3'], ['C3', 'G3'], ['D3', 'A3'], ['A2', 'E3'], ['E2', 'B2'], ['E2', 'B2']],
-  drums: false,
-  levels: { lead: 0.085, arp: 0.032, bass: 0.15 },
+  style: 'march',
+  levels: { lead: 0.085, arp: 0.032, bass: 0.15, stab: 0 },
 };
 
 // --------------------------------------------------------------------------------------------------------------- battle
 const BATTLE = {
-  bpm: 152,
+  bpm: 174,
   melody: [
-    // A
-    'E5:2 E5:2 G5:2 E5:2 B5:4 A5:2 G5:2',     // Em
-    'E5:2 G5:2 B5:2 G5:2 E5:4 F#5:2 G5:2',    // Em
-    'G5:2 E5:2 C5:2 E5:2 G5:4 A5:2 G5:2',     // C
-    'F#5:2 A5:2 D6:2 A5:2 F#5:4 E5:2 D5:2',   // D
-    'E5:2 E5:2 G5:2 E5:2 B5:4 C6:2 B5:2',     // Em
-    'D5:2 G5:2 B5:2 G5:2 D6:4 B5:2 G5:2',     // G
-    'C6:4 B5:2 A5:2 G5:4 E5:4',               // C
-    'B4:2 D#5:2 F#5:2 A5:2 B5:8',             // B7
-    // B
-    'A4:2 C5:2 E5:2 A5:2 E5:4 C5:2 E5:2',     // Am
-    'A5:4 G5:2 E5:2 C5:4 E5:4',               // Am
-    'D5:2 F#5:2 A5:2 F#5:2 D6:4 A5:4',        // D
-    'A5:4 F#5:4 D5:4 F#5:4',                  // D
-    'E5:2 G5:2 C6:2 G5:2 E6:4 C6:4',          // C
-    'D#6:4 B5:4 F#5:4 D#5:4',                 // B7
-    'G5:2 B5:2 E6:2 B5:2 G5:4 E5:4',          // Em
-    'B5:2 A5:2 G5:2 F#5:2 E5:4 D#5:2 B4:2',   // B7 (back to the start)
+    // A: the charge
+    'D5:2 F5:2 A5:2 D6:2 C6:2 A5:2 F5:2 A5:2',        // Dm
+    'D6:4 C6:2 Bb5:2 A5:4 F5:4',                      // Dm
+    'Bb5:2 D6:2 F6:2 D6:2 Bb5:4 D6:2 C6:2',           // Bb
+    'E6:4 D6:2 C6:2 G5:4 C6:4',                       // C
+    'D5:2 F5:2 A5:2 D6:2 F6:4 E6:2 D6:2',             // Dm
+    'D6:4 C6:2 Bb5:2 A5:2 Bb5:2 D6:4',                // Bb
+    'C6:2 E6:2 G6:2 E6:2 C6:2 E6:2 G6:4',             // C
+    'A5:2 C#6:2 E6:2 A6:2 G6:4 E6:2 C#6:2',           // A
+    // B: the clash
+    'G5:2 Bb5:2 D6:2 G6:2 F6:2 D6:2 Bb5:2 D6:2',      // Gm
+    'G6:4 F6:2 D6:2 Bb5:4 D6:4',                      // Gm
+    'A5:2 D6:2 F6:2 A6:2 G6:2 F6:2 D6:2 F6:2',        // Dm
+    'A6:4 G6:2 F6:2 D6:8',                            // Dm
+    'Bb5:2 D6:2 F6:2 Bb6:2 A6:2 F6:2 D6:2 F6:2',      // Bb
+    'C6:2 E6:2 G6:2 C7:2 Bb6:2 G6:2 E6:4',            // C
+    'A5:2 C#6:2 E6:2 A6:2 E6:2 C#6:2 A5:2 C#6:2',     // A
+    'E6:2 D6:2 C#6:2 A5:2 A5:8',                      // A (and round again)
   ],
   chords: [
-    ['E4', 'G4', 'B4'], ['E4', 'G4', 'B4'], ['C4', 'E4', 'G4'], ['D4', 'F#4', 'A4'],
-    ['E4', 'G4', 'B4'], ['G3', 'B3', 'D4'], ['C4', 'E4', 'G4'], ['B3', 'D#4', 'F#4'],
-    ['A3', 'C4', 'E4'], ['A3', 'C4', 'E4'], ['D4', 'F#4', 'A4'], ['D4', 'F#4', 'A4'],
-    ['C4', 'E4', 'G4'], ['B3', 'D#4', 'F#4'], ['E4', 'G4', 'B4'], ['B3', 'D#4', 'F#4'],
+    ['D4', 'F4', 'A4'], ['D4', 'F4', 'A4'], ['Bb3', 'D4', 'F4'], ['C4', 'E4', 'G4'],
+    ['D4', 'F4', 'A4'], ['Bb3', 'D4', 'F4'], ['C4', 'E4', 'G4'], ['A3', 'C#4', 'E4'],
+    ['G3', 'Bb3', 'D4'], ['G3', 'Bb3', 'D4'], ['D4', 'F4', 'A4'], ['D4', 'F4', 'A4'],
+    ['Bb3', 'D4', 'F4'], ['C4', 'E4', 'G4'], ['A3', 'C#4', 'E4'], ['A3', 'C#4', 'E4'],
   ],
-  roots: [['E2'], ['E2'], ['C3'], ['D3'], ['E2'], ['G2'], ['C3'], ['B2'],
-    ['A2'], ['A2'], ['D3'], ['D3'], ['C3'], ['B2'], ['E2'], ['B2']],
-  drums: true,
-  levels: { lead: 0.075, arp: 0.026, bass: 0.17 },
+  roots: [['D3'], ['D3'], ['Bb2'], ['C3'], ['D3'], ['Bb2'], ['C3'], ['A2'],
+    ['G2'], ['G2'], ['D3'], ['D3'], ['Bb2'], ['C3'], ['A2'], ['A2']],
+  style: 'action',
+  levels: { lead: 0.07, arp: 0.02, bass: 0.17, stab: 0.05 },
 };
 
 export const SONGS = { title: TITLE, battle: BATTLE };
 
 // Turn a song into "what happens on each sixteenth step", once.
 function compile(song) {
-  const total = song.melody.length * STEPS_PER_BAR;
+  const action = song.style === 'action';
+  const bars = song.melody.length;
+  const total = bars * STEPS_PER_BAR;
   const steps = Array.from({ length: total }, () => []);
-  for (const e of parseMelody(song.melody)) steps[e.step].push({ voice: 'lead', freq: hz(e.note), len: e.len });
+  for (const e of parseMelody(song.melody)) {
+    steps[e.step].push({ voice: 'lead', freq: hz(e.note), len: e.len });
+    if (action) steps[e.step].push({ voice: 'lead2', freq: hz(e.note) / 2, len: e.len });   // an octave below, thin and buzzy
+  }
   song.chords.forEach((chord, bar) => {
     const base = bar * STEPS_PER_BAR;
-    if (!song.drums) {                                              // calm: eighth-note arpeggio
-      const order = [0, 1, 2, 1, 0, 1, 2, 1];
-      order.forEach((tone, i) => steps[base + i * 2].push({ voice: 'arp', freq: hz(chord[tone]), len: 2 }));
-    } else {                                                        // driving: sixteenth-note arpeggio
+    if (action) {                                                   // sixteenth-note arpeggio
       const order = [0, 1, 2, 1];
       for (let i = 0; i < STEPS_PER_BAR; i++) steps[base + i].push({ voice: 'arp', freq: hz(chord[order[i % 4]]), len: 1 });
+      for (const s of bar % 2 ? [0, 6, 10] : [0, 6, 8, 14]) steps[base + s].push({ voice: 'stab', notes: [chord[0], chord[1], chord[2]], len: 2 });
+    } else {                                                        // eighth-note arpeggio
+      const order = [0, 1, 2, 1, 0, 1, 2, 1];
+      order.forEach((tone, i) => steps[base + i * 2].push({ voice: 'arp', freq: hz(chord[tone]), len: 2 }));
     }
   });
   song.roots.forEach(([root, fifth], bar) => {
     const base = bar * STEPS_PER_BAR;
-    const pattern = song.drums
-      ? [root, root, transpose(root, 12), root, root, root, transpose(root, 12), root]
-      : [root, root, fifth, root, root, root, fifth, root];
-    pattern.forEach((note, i) => steps[base + i * 2].push({ voice: 'bass', freq: hz(note), len: 2 }));
-    if (song.drums) {
-      for (const s of bar % 2 ? [0, 8, 10] : [0, 8]) steps[base + s].push({ voice: 'kick' });
+    if (action) {
+      // a gallop: long-short-short on every beat, jumping an octave on the last hit of beats 2 and 4
+      for (let beat = 0; beat < 4; beat++) {
+        [[0, 2], [2, 1], [3, 1]].forEach(([offset, len], hit) => {
+          const jump = hit === 2 && beat % 2 === 1;
+          steps[base + beat * 4 + offset].push({ voice: 'bass', freq: hz(jump ? transpose(root, 12) : root), len });
+        });
+      }
+      for (const s of bar % 2 ? [0, 4, 8, 10, 12] : [0, 6, 8, 14]) steps[base + s].push({ voice: 'kick' });
       for (const s of [4, 12]) steps[base + s].push({ voice: 'snare' });
-      for (let s = 0; s < STEPS_PER_BAR; s += 2) steps[base + s].push({ voice: 'hat', accent: s % 4 === 2 });
+      for (let s = 0; s < STEPS_PER_BAR; s++) steps[base + s].push({ voice: 'hat', accent: s % 4 === 2, soft: s % 2 === 1 });
+      if (bar % 8 === 0) steps[base].push({ voice: 'crash' });                                    // cymbal on each section start
+      if (bar % 8 === 7) for (let s = 8; s < STEPS_PER_BAR; s++) steps[base + s].push({ voice: 'snare', roll: (s - 8) / 7 });   // build-up roll
     } else {
-      for (const s of [4, 12]) steps[base + s].push({ voice: 'tick' });
+      const pattern = [root, root, fifth, root, root, root, fifth, root];
+      pattern.forEach((note, i) => steps[base + i * 2].push({ voice: 'bass', freq: hz(note), len: 2 }));
+      for (const s of [0, 8]) steps[base + s].push({ voice: 'kick', soft: true });
+      for (const s of [4, 12]) steps[base + s].push({ voice: 'snare', soft: true });
+      for (let s = 0; s < STEPS_PER_BAR; s += 2) steps[base + s].push({ voice: 'hat', accent: s % 4 === 2, soft: true });
     }
   });
   return steps;
@@ -195,22 +212,29 @@ function play(ctx, out, e, t, stepSeconds, levels) {
   const length = Math.max(0.03, (e.len || 1) * stepSeconds * 0.9);
   switch (e.voice) {
     case 'lead': tone(ctx, out, t, e.freq, length * 1.05, levels.lead, 0.5); break;
+    case 'lead2': tone(ctx, out, t, e.freq, length * 1.05, levels.lead * 0.55, 0.125); break;
     case 'arp': tone(ctx, out, t, e.freq, length, levels.arp, 0.25); break;
     case 'bass': tone(ctx, out, t, e.freq, length, levels.bass, 'triangle'); break;
+    case 'stab':                                         // a short, wide chord hit
+      for (const note of e.notes) { tone(ctx, out, t, hz(note), length * 1.1, levels.stab, 0.5); tone(ctx, out, t, hz(note) * 1.006, length * 1.1, levels.stab * 0.6, 0.25); }
+      break;
     case 'kick': {
+      const level = e.soft ? 0.18 : 0.34;
       const osc = ctx.createOscillator();
       osc.frequency.setValueAtTime(150, t);
       osc.frequency.exponentialRampToValueAtTime(42, t + 0.12);
-      osc.connect(envelope(ctx, out, t, 0.32, 0.16, 0.002));
+      osc.connect(envelope(ctx, out, t, level, 0.16, 0.002));
       osc.start(t); osc.stop(t + 0.18);
       break;
     }
-    case 'snare':
-      noiseHit(ctx, out, t, 0.13, 0.11, 1200);
-      tone(ctx, out, t, 190, 0.06, 0.05, 'triangle');
+    case 'snare': {
+      const level = (e.soft ? 0.05 : 0.12) * (e.roll === undefined ? 1 : 0.6 + 0.9 * e.roll);   // a roll gets louder as it builds
+      noiseHit(ctx, out, t, e.roll === undefined ? 0.13 : 0.07, level, 1200);
+      tone(ctx, out, t, 190, 0.06, level * 0.45, 'triangle');
       break;
-    case 'hat': noiseHit(ctx, out, t, e.accent ? 0.05 : 0.025, e.accent ? 0.05 : 0.03, 7000); break;
-    case 'tick': noiseHit(ctx, out, t, 0.03, 0.02, 4000); break;
+    }
+    case 'hat': noiseHit(ctx, out, t, e.accent ? 0.05 : 0.025, (e.accent ? 0.05 : 0.03) * (e.soft ? 0.5 : 1), 7000); break;
+    case 'crash': noiseHit(ctx, out, t, 1.1, 0.07, 3000); break;
   }
 }
 
