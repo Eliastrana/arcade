@@ -20,7 +20,7 @@ const ROOT = path.join(HERE, '..');
 const PORT = Number(process.env.PORT) || 3001;
 
 // ---------------------------------------------------------------- static
-const TYPES = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css', '.png':'image/png', '.webp':'image/webp', '.svg':'image/svg+xml', '.glb':'model/gltf-binary' };
+const TYPES = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css', '.png':'image/png', '.webp':'image/webp', '.svg':'image/svg+xml', '.mp3':'audio/mpeg', '.ogg':'audio/ogg', '.glb':'model/gltf-binary' };
 const ROUTES = {
   '/':                       path.join(ROOT, 'public/brawl.html'),
   '/arena':                  path.join(ROOT, 'public/arena.html'),
@@ -49,8 +49,18 @@ const server = http.createServer((req, res) => {
   if (!file) { res.writeHead(404); return res.end('not found'); }
   fs.readFile(file, (err, buf) => {
     if (err) { res.writeHead(404); return res.end('not found'); }
+    // Audio needs byte ranges so browsers can loop and seek it (Safari insists)
+    const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || '');
+    if (range && /\.(mp3|ogg)$/.test(file)) {
+      const start = range[1] === '' ? 0 : Number(range[1]);
+      const end = range[2] === '' ? buf.length - 1 : Math.min(Number(range[2]), buf.length - 1);
+      if (start > end || start >= buf.length) { res.writeHead(416, { 'Content-Range': `bytes */${buf.length}` }); return res.end(); }
+      res.writeHead(206, { 'Content-Type': TYPES[path.extname(file)], 'Accept-Ranges': 'bytes',
+        'Content-Range': `bytes ${start}-${end}/${buf.length}`, 'Content-Length': end - start + 1 });
+      return res.end(buf.subarray(start, end + 1));
+    }
     res.writeHead(200, {
-      'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream',
+      'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream', 'Accept-Ranges': 'bytes',
       // no-cache so a plain refresh always picks up edits; the files are tiny
       'Cache-Control': 'no-cache, must-revalidate',
     });

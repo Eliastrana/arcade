@@ -262,6 +262,7 @@ function stopCurrent(fade = 0.5) {
   if (!current) return;
   const old = current; current = null;
   clearInterval(old.timer);
+  if (old.audio) setTimeout(() => { old.audio.pause(); old.audio.removeAttribute('src'); }, (fade + 0.2) * 1000);
   const now = context.currentTime;
   old.gain.gain.cancelScheduledValues(now);
   old.gain.gain.setValueAtTime(old.gain.gain.value, now);
@@ -269,10 +270,35 @@ function stopCurrent(fade = 0.5) {
   setTimeout(() => old.gain.disconnect(), (fade + 0.4) * 1000);
 }
 
+// Your own audio files, by track name. If the file is not there (for example a fresh copy from GitHub, where the
+// files are left out on purpose), the built-in tune plays instead.
+const FILES = { title: '/music/menu.mp3' };
+
+function startFile(name, url) {
+  const ctx = audioContext();
+  const audio = new Audio(url);
+  audio.loop = true; audio.preload = 'auto';
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(1, ctx.currentTime + 0.8);
+  ctx.createMediaElementSource(audio).connect(gain);
+  gain.connect(master);
+  const player = { name, gain, audio, timer: 0 };
+  const begin = () => audio.play().catch(() => {});           // refused until the first click; unlock() tries again
+  audio.addEventListener('error', () => { if (current === player) { stopCurrent(0.05); startSynth(name); } });
+  begin();
+  current = player;
+}
+
 function start(name) {
   const ctx = audioContext();
   if (!ctx) return;
   stopCurrent();
+  if (FILES[name]) startFile(name, FILES[name]); else startSynth(name);
+}
+
+function startSynth(name) {
+  const ctx = audioContext();
   const song = SONGS[name];
   const steps = compile(song);
   const stepSeconds = 60 / song.bpm / 4;
@@ -300,7 +326,10 @@ export const music = {
     start(name);
   },
   /** Browsers only allow sound after a click or key press; the first one wakes the music up. */
-  unlock() { if (context?.state === 'suspended') context.resume().catch(() => {}); },
+  unlock() {
+    if (context?.state === 'suspended') context.resume().catch(() => {});
+    if (current?.audio?.paused) current.audio.play().catch(() => {});
+  },
   get muted() { return muted; },
   setMuted(value) {
     muted = !!value;
