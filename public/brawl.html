@@ -60,11 +60,11 @@
   #roster{position:absolute;width:1px;height:1px;margin:0;min-height:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
   #name{width:min(240px,100%);background:#102e3c;border:2px solid #85b7b5;color:white;padding:9px;text-align:center;font:17px "PixelText",ui-monospace,SFMono-Regular,Menlo,monospace;outline:none;margin-bottom:10px}#name:focus{border-color:var(--gold)}
   #characterGrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px;margin:2px auto 9px}
-  .fighterChoice{border:2px solid #749ea0;background:#244c59;color:var(--paper);cursor:pointer;min-height:140px;padding:6px;transition:transform .15s,border-color .15s,background .15s}
+  .fighterChoice{border:2px solid #749ea0;background:#244c59;color:var(--paper);cursor:pointer;min-height:118px;padding:6px;transition:transform .15s,border-color .15s,background .15s}
   .fighterChoice:hover{transform:translateY(-3px);border-color:#d8f0d2}.fighterChoice.selected{border-color:var(--gold);background:#42694f;box-shadow:inset 0 0 0 2px #a8c66e}
   .fighterChoice:disabled{opacity:.45;cursor:not-allowed}.fighterChoice:disabled:hover{transform:none;border-color:#749ea0}
   .fighterChoice canvas{display:block;width:76px;height:92px;margin:auto;image-rendering:pixelated}.fighterChoice strong{display:block;margin:0 0 3px;font-size:21px}.fighterChoice small{display:block;color:#cae5df;font-size:14px}
-  #worldIntro{font-size:14px;color:#dceca9;margin:0 0 5px}#worldGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 auto 8px}#worldIntro[hidden],#worldGrid[hidden]{display:none}
+  #worldGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 auto 8px}#worldGrid[hidden]{display:none}
   .worldChoice{display:flex;align-items:center;gap:10px;min-width:0;text-align:left;border:2px solid #749ea0;background:#244c59;color:var(--paper);padding:5px;cursor:pointer;font:inherit}.worldChoice:hover{border-color:#d8f0d2}.worldChoice.selected{border-color:var(--gold);background:#42694f;box-shadow:inset 0 0 0 2px #a8c66e}.worldChoice:disabled{opacity:.45;cursor:not-allowed}
   .worldChoice canvas{display:block;flex:none;width:96px;height:54px;image-rendering:pixelated}.worldChoice strong{display:block;font-size:17px}.worldChoice small{display:block;color:#cae5df;font-size:14px;margin-top:4px}
   #matchSetup{margin:0 auto 8px}#matchSetup[hidden],#teamGrid[hidden],#friendlyFire[hidden]{display:none}
@@ -107,7 +107,7 @@
   .podName{font-family:"PixelText",monospace;font-weight:400;font-size:20px;line-height:1}
   #muteButton{font-family:"Pixel",monospace;font-weight:400;font-size:10px}
   #name{font-size:20px}
-  #lobbyHint,#modeHint,#worldIntro,#controls,#status,#netStats,#matchRule,#worldStatus{font-weight:400}
+  #lobbyHint,#modeHint,#controls,#status,#netStats,#matchRule,#worldStatus{font-weight:400}
   @media(max-width:650px){.card h1{font-size:16px}.fighterChoice strong,.worldChoice strong{font-size:9px}.score .damage{font-size:14px}#ready{font-size:12px}}
 </style>
 </head>
@@ -120,9 +120,9 @@
 <button id="emoteButton" type="button" aria-label="dans" hidden>Dans · E</button>
 <div id="audioControls"><button id="muteButton" type="button" aria-pressed="true">♪ På</button><input id="volume" type="range" min="0" max="100" step="1" value="50" aria-label="Lydstyrke"></div>
 <div id="splash"><div class="splashTitle"><h1>Slagbrødrene</h1><p>Slåss mot vennene dine</p></div><button id="play" type="button" autofocus>Spill</button></div>
-<div id="lobby" class="overlay" hidden><div class="card"><div id="podium" aria-hidden="true"></div><h1>Slagbrødrene</h1><input id="name" maxlength="16" placeholder="Ditt navn" aria-label="spillernavn"><div id="characterGrid"></div><div id="worldIntro">Velg verden. Flest stemmer vinner. Uavgjort trekkes tilfeldig.</div><div id="worldGrid"></div><div id="matchSetup" hidden><div id="modeGrid"><button id="modeFfa" class="modeChoice" type="button">Alle mot alle</button><button id="modeTeams" class="modeChoice" type="button">Lagkamp</button><button id="friendlyFire" class="modeChoice" type="button" hidden>Lagskade: av</button></div><div id="teamGrid" hidden><span>Ditt lag</span><button class="teamChoice red" data-team="red" type="button">Rød 0/2</button><button class="teamChoice blue" data-team="blue" type="button">Blå 0/2</button></div><div id="modeHint">Romverten velger kampregler</div></div><div id="roster"></div><button id="ready">Kobler til …</button><div id="lobbyHint">Venter på serveren …</div></div></div>
+<div id="lobby" class="overlay" hidden><div class="card"><div id="podium" aria-hidden="true"></div><h1>Slagbrødrene</h1><input id="name" maxlength="16" placeholder="Ditt navn" aria-label="spillernavn"><div id="characterGrid"></div><div id="worldGrid"></div><div id="matchSetup" hidden><div id="modeGrid"><button id="modeFfa" class="modeChoice" type="button">Alle mot alle</button><button id="modeTeams" class="modeChoice" type="button">Lagkamp</button><button id="friendlyFire" class="modeChoice" type="button" hidden>Lagskade: av</button></div><div id="teamGrid" hidden><span>Ditt lag</span><button class="teamChoice red" data-team="red" type="button">Rød 0/2</button><button class="teamChoice blue" data-team="blue" type="button">Blå 0/2</button></div><div id="modeHint">Romverten velger kampregler</div></div><div id="roster"></div><button id="ready">Kobler til …</button><div id="lobbyHint">Venter på serveren …</div></div></div>
 <div id="touch" aria-label="berøringskontroller"><button id="tl" aria-label="gå til venstre">◀</button><button id="tr" aria-label="gå til høyre">▶</button><button id="tj" aria-label="hopp">▲</button><button id="ta" aria-label="rask angrep">j</button><button id="ts" aria-label="smash-angrep">k</button><button id="tp" aria-label="spesialangrep">l</button><button id="tg" aria-label="grip" hidden>Grip</button><button id="tshield" aria-label="hold for skjold" hidden>Skjold</button><button id="tu" aria-label="luftangrep opp" hidden>Opp</button></div>
 <div id="throwPad" aria-label="kastretning" hidden><span>Kast</span><button data-x="-1" data-y="0" aria-label="kast til venstre">←</button><button data-x="0" data-y="-1" aria-label="kast opp">↑</button><button data-x="0" data-y="1" aria-label="kast ned">↓</button><button data-x="1" data-y="0" aria-label="kast til høyre">→</button></div>
-<script type="module" src="/brawl.js?v=32"></script>
+<script type="module" src="/brawl.js?v=33"></script>
 </body>
 </html>

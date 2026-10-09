@@ -39,7 +39,6 @@ const card = document.querySelector('#lobby .card');
 const podium = document.querySelector('#podium');
 const grid = document.querySelector('#characterGrid');
 const worldGrid = document.querySelector('#worldGrid');
-const worldIntro = document.querySelector('#worldIntro');
 const worldStatus = document.querySelector('#worldStatus');
 const matchRule = document.querySelector('#matchRule');
 const matchSetup = document.querySelector('#matchSetup');
@@ -213,7 +212,7 @@ function connect() {
         initialCards.forEach((card, index) => card.classList.toggle('selected', Object.keys(FIGHTERS)[index] === selected));
       }
       const availableWorlds = Object.keys(m.worlds || {});
-      worldIntro.hidden = worldGrid.hidden = availableWorlds.length === 0;
+      worldGrid.hidden = availableWorlds.length === 0;
       worldCards.forEach(card => { card.button.disabled = !availableWorlds.includes(card.key); });
       if (availableWorlds.length && !availableWorlds.includes(selectedWorld)) selectedWorld = availableWorlds[0];
       updateWorldSelection();
@@ -550,8 +549,7 @@ const initialCards = Object.entries(FIGHTERS).map(([key, fighter]) => {
   context.fillStyle = '#173b4b'; context.fillRect(0, 0, 88, 105);
   drawFighter(context, key, 44, 94, 2.55, 1, null, 0, false);
   const label = document.createElement('strong'); label.textContent = fighter.label;
-  const special = document.createElement('small'); special.textContent = fighter.special;
-  button.append(portrait, label, special);
+  button.append(portrait, label);
   button.addEventListener('click', () => {
     selected = key; initialCards.forEach((card, i) => card.classList.toggle('selected', Object.keys(FIGHTERS)[i] === key));
     send('brawl-character', { character: key });
