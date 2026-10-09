@@ -29,6 +29,11 @@ const TEAM_NAMES = { red: 'Rød', blue: 'Blå' };
 const lobby = document.querySelector('#lobby');
 const splashScreen = document.querySelector('#splash');
 const roomsScreen = document.querySelector('#rooms');
+const howto = document.querySelector('#howto');
+const howtoButton = document.querySelector('#howtoButton');
+const howtoClose = document.querySelector('#howtoClose');
+const mascot = document.querySelector('#mascot');
+const mascotCaption = document.querySelector('#mascotCaption');
 const roomList = document.querySelector('#roomList');
 const roomsHint = document.querySelector('#roomsHint');
 const quickPlayButton = document.querySelector('#quickPlay');
@@ -654,6 +659,7 @@ function action(name) {
   } else send('brawl-action', { action: name });
 }
 window.addEventListener('keydown', event => {
+  if (!howto.hidden) { if (event.key === 'Escape') closeHowto(); return; }     // the how-to pop-up is open: keys only close it
   if (splash) {
     if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); leaveSplash(); }
     return;
@@ -1500,6 +1506,92 @@ setInterval(() => {
     }
   }
 }, 33);
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The how-to pop-up ("Slik spiller du"), opened with a button in the lobby. In the middle a little original mascot
+// (drawn here from rectangles, not one of the fighters) acts out the moves one after the other while the matching
+// key in the lists lights up.
+const MASCOT_POSES = [
+  ['walk', 'Gå'], ['jump', 'Hopp'], ['jab', 'Rask slag'], ['smash', 'Smash'],
+  ['special', 'Spesial'], ['special2', 'Spesial 2'], ['dance', 'Dans'],
+];
+const POSE_SECONDS = 1.35;
+const mascotContext = mascot.getContext('2d');
+mascotContext.imageSmoothingEnabled = false;
+
+function drawMascot(pose, t) {
+  const g = mascotContext, u = 6, cx = 88, gy = 172;
+  g.clearRect(0, 0, mascot.width, mascot.height);
+  const R = (x, y, w, h, color) => { g.fillStyle = color; g.fillRect(Math.round(cx + x * u), Math.round(gy + y * u), Math.round(w * u), Math.round(h * u)); };
+  const skin = '#f2c9a0', glove = '#d93a3a', band = '#e8504a', tunic = '#3fa9a0', pants = '#3a4b8c', boot = '#5a3a22';
+  const stepOn = Math.sin(t * 13) > 0;
+  const hop = pose === 'jump' ? -Math.abs(Math.sin(Math.min(1, t / 1.0) * Math.PI)) * 8
+    : pose === 'dance' ? -Math.abs(Math.sin(t * 8)) * 1.6 : pose === 'walk' ? -(stepOn ? 0.5 : 0) : Math.sin(t * 4) * 0.25;
+  const lean = pose === 'special2' ? 1.5 : 0;
+  const body = (offset, alpha) => {
+    g.globalAlpha = alpha;
+    const o = offset + lean, y = hop;
+    const tuck = pose === 'jump' ? -1.5 : 0;                                   // legs pulled up in the air
+    R(-4 + o, -2 + y + tuck - (pose === 'walk' && stepOn ? 1 : 0), 3, 2, boot); R(1 + o, -2 + y + tuck - (pose === 'walk' && !stepOn ? 1 : 0), 3, 2, boot);
+    R(-4 + o, -6 + y + tuck * 0.5, 3, 4, pants); R(1 + o, -6 + y + tuck * 0.5, 3, 4, pants);
+    R(-4.5 + o, -14 + y, 9, 8, tunic); R(-4.5 + o, -9.5 + y, 9, 1, '#6b4a2b'); R(-2 + o, -13 + y, 2, 2, '#6fd3c8');
+    R(-5 + o, -23 + y, 10, 9, skin); R(-5 + o, -24 + y, 10, 2, '#5a3a22');
+    R(-5 + o, -20 + y, 10, 2, band); R(-8 + o, -20 + y + (Math.sin(t * 6) > 0 ? 0 : 1), 3, 2, band);
+    R(0.5 + o, -17.5 + y, 1.4, 2, '#2b2238'); R(3.2 + o, -17.5 + y, 1.4, 2, '#2b2238'); R(2 + o, -14.8 + y, 2.4, 0.7, '#b5524a');
+    R(-6.5 + o, pose === 'dance' ? -19 + y : -13 + y, 2, pose === 'dance' ? 6 : 6, skin);       // back arm
+    g.globalAlpha = 1;
+  };
+  if (pose === 'special2') { body(-9, 0.12); body(-6, 0.2); body(-3, 0.3); }                      // a dash: fading copies behind
+  const y = hop, o = lean;
+  if (pose === 'jab') {
+    const reach = t % POSE_SECONDS < 0.5 ? 0 : 1;
+    R(4.5 + o, -12.5 + y, 5 + reach * 3, 2, skin); R(9.5 + reach * 3 + o, -13.8 + y, 3.6, 4.4, glove);
+    if (reach) { R(14.2 + o, -13 + y, 3, 0.8, '#ffe184'); R(15.3 + o, -14.2 + y, 0.8, 3, '#ffe184'); }
+  } else if (pose === 'smash') {
+    const phase = (t % POSE_SECONDS) / POSE_SECONDS;
+    if (phase < 0.45) { R(-1 + o, -18 + y, 2, 5, skin); R(-2 + o, -21.5 + y, 4.5, 4.5, glove); }          // winding up overhead
+    else { R(4.5 + o, -13.5 + y, 8, 3, skin); R(12.5 + o, -16 + y, 6, 6.4, glove);
+      for (const [dx, dy] of [[19.5, -17], [20, -12.5], [18.5, -9.5]]) R(dx + o, dy + y, 3, 0.9, '#ffe184'); }
+  } else if (pose === 'special') {
+    R(4.5 + o, -13 + y, 5, 2.4, skin);
+    const pulse = 3.2 + Math.sin(t * 14) * 0.5;
+    g.fillStyle = '#6fd3c8'; g.beginPath(); g.arc(cx + 12.5 * u, gy + (-12 + y) * u, pulse * u, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#e8fffb'; g.beginPath(); g.arc(cx + 12.5 * u, gy + (-12 + y) * u, pulse * 0.45 * u, 0, Math.PI * 2); g.fill();
+  } else if (pose === 'dance') {
+    R(4.5 + o, -19 + y, 2, 6, skin); R(4.2 + o, -21.5 + y, 2.6, 2.6, glove);
+    g.fillStyle = '#fff1a9'; g.font = '700 22px "PixelText", monospace'; g.textAlign = 'center';
+    g.fillText('♪', cx + 14 * u, gy + (-19 - Math.abs(Math.sin(t * 5)) * 3) * u * 0.9);
+  } else {
+    R(4.5 + o, -13 + y, 2, 6, skin); R(4.5 + o, -8 + y, 2.6, 2.2, glove);
+  }
+  body(0, 1);                                                                                   // the fighter itself (front arm above is behind it, which reads fine at this size)
+  g.fillStyle = '#10303a88';                                                                    // shadow, shrinking while in the air
+  const wide = 9 - Math.min(3, -hop * 0.4);
+  g.fillRect(Math.round(cx - wide * u / 2), gy + 2, Math.round(wide * u), 5);
+}
+
+let howtoTimer = 0, howtoStart = 0;
+function tickHowto() {
+  const t = (performance.now() - howtoStart) / 1000;
+  const [pose, label] = MASCOT_POSES[Math.floor(t / POSE_SECONDS) % MASCOT_POSES.length];
+  drawMascot(pose, t % POSE_SECONDS);
+  if (mascotCaption.textContent !== label) mascotCaption.textContent = label;
+  for (const item of howto.querySelectorAll('li[data-pose]')) item.classList.toggle('on', item.dataset.pose === pose);
+}
+function openHowto() {
+  howto.hidden = false;
+  howtoStart = performance.now();
+  clearInterval(howtoTimer); howtoTimer = setInterval(tickHowto, 60); tickHowto();
+  howtoClose.focus({ preventScroll: true });
+}
+function closeHowto() {
+  howto.hidden = true;
+  clearInterval(howtoTimer);
+  howtoButton.focus({ preventScroll: true });
+}
+howtoButton.addEventListener('click', openHowto);
+howtoClose.addEventListener('click', closeHowto);
+howto.addEventListener('mousedown', event => { if (event.target === howto) closeHowto(); });
 
 let lastFrame = performance.now();
 function render(now) {
