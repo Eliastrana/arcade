@@ -44,24 +44,28 @@ export const BRAWL_EMOTE_LINES = Object.freeze({
   zelda: { text: 'for Hyrule!', speech: 'for Hyrule!', pitch: 1.05, rate: 0.95 },
 });
 
-// startup = delay before the hit comes out, active = how long it can hit, total = until the fighter can act again
-// (the rest after the hit is the "endlag"). Quick moves come out fast and recover fast but hit weakly; heavy moves
-// take longer to come out and leave the fighter open for longer, as in Smash.
+// startup = delay before the hit comes out, active = how long it can hit, total = until the fighter can act again.
+// The first press of any attack is quick; spamming is held back by the rules below instead (extra rest after a miss,
+// a growing rest when the same move is repeated, and weaker hits), so nothing feels slow until it is mashed.
 export const ATTACKS = Object.freeze({
-  jab: { damage: 6, base: 145, growth: 470, startup: 0.08, active: 0.11, total: 0.40, reach: 70, radius: 30, angle: 55 },
-  smash: { damage: 15, base: 220, growth: 720, startup: 0.21, active: 0.14, total: 0.80, reach: 83, radius: 36, angle: 58 },
-  special: { damage: 8, base: 165, growth: 535, startup: 0.20, active: 0, total: 0.90, reach: 0, radius: 0, angle: 56 },
-  grab: { damage: 5, base: 155, growth: 465, startup: 0.13, active: 0.11, total: 0.60, reach: 48, radius: 26, angle: 62 },
-  upair: { damage: 7, base: 155, growth: 500, startup: 0.05, active: 0.25, total: 0.50, reach: 42, radius: 35, angle: 80 },
+  jab: { damage: 6, base: 145, growth: 470, startup: 0.065, active: 0.11, total: 0.31, reach: 70, radius: 30, angle: 55 },
+  smash: { damage: 15, base: 220, growth: 720, startup: 0.19, active: 0.14, total: 0.66, reach: 83, radius: 36, angle: 58 },
+  special: { damage: 8, base: 165, growth: 535, startup: 0.16, active: 0, total: 0.52, reach: 0, radius: 0, angle: 56 },
+  grab: { damage: 5, base: 155, growth: 465, startup: 0.09, active: 0.11, total: 0.43, reach: 48, radius: 26, angle: 62 },
+  upair: { damage: 7, base: 155, growth: 500, startup: 0.05, active: 0.25, total: 0.46, reach: 42, radius: 35, angle: 80 },
 });
 
 // Extra rest after an attack that connected with nothing (a grab that finds nobody, a smash into thin air). A move
 // that hits can be followed up at once; whiffing is punished, so mashing a button blindly is not the best plan.
-export const ATTACK_LAG = Object.freeze({ jab: 0.12, smash: 0.26, grab: 0.32, special: 0.12, upair: 0.06 });
+export const ATTACK_LAG = Object.freeze({ jab: 0.10, smash: 0.22, grab: 0.28, special: 0.10, upair: 0.05 });
+
+// Repeating the same move: each use within CHAIN.window seconds of the one before adds CHAIN.step seconds of rest
+// after it (up to CHAIN.max). The first use, and a use after a pause, has no extra rest at all.
+export const CHAIN = Object.freeze({ window: 1.6, step: 0.08, max: 0.42 });
 
 // Repeating the same move wears it out: every use in the last STALE.window seconds beyond the first takes
 // STALE.step off its damage and knockback, down to STALE.floor of full strength.
-export const STALE = Object.freeze({ window: 7, step: 0.09, floor: 0.5 });
+export const STALE = Object.freeze({ window: 7, step: 0.10, floor: 0.4 });
 
 export const SPAWNS = [290, 670, 385, 575];
 

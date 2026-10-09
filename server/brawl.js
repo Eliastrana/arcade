@@ -1,4 +1,4 @@
-import { BRAWL, BRAWL_WORLDS, BRAWL_TEAMS, BRAWL_EMOTE, BRAWL_EMOTE_LINES, FIGHTERS, ATTACKS, CAPE, EGG_LAY, ATTACK_LAG, STALE, THUNDER, DIN_FIRE, eggLayDuration, isBrawlRollInvulnerable, makeFighter, knockback, launchBrawlVelocity, waftBrawlAttack, throwBrawlVelocity, resetFighter, isOut, jumpBrawlFighter, recoverBrawlFighter, stepBrawlMovement } from '../shared/brawl.js';
+import { BRAWL, BRAWL_WORLDS, BRAWL_TEAMS, BRAWL_EMOTE, BRAWL_EMOTE_LINES, FIGHTERS, ATTACKS, CAPE, EGG_LAY, ATTACK_LAG, CHAIN, STALE, THUNDER, DIN_FIRE, eggLayDuration, isBrawlRollInvulnerable, makeFighter, knockback, launchBrawlVelocity, waftBrawlAttack, throwBrawlVelocity, resetFighter, isOut, jumpBrawlFighter, recoverBrawlFighter, stepBrawlMovement } from '../shared/brawl.js';
 
 const MAX_PLAYERS = 4;
 const RESULTS_SECONDS = 7;
@@ -199,6 +199,12 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
       line: BRAWL_EMOTE_LINES[p.character].text, x: p.x, y: p.y });
   }
 
+  // Extra rest from repeating a move: 0 for the first use (or after a pause), growing with each quick repeat.
+  function chainRest(p, kind) {
+    const uses = (p.recentAttacks ?? []).filter(a => a.kind === kind && elapsed - a.at <= CHAIN.window).length;
+    return Math.min(CHAIN.max, CHAIN.step * Math.max(0, uses - 1));
+  }
+
   function attack(p, kind) {
     if (p.stocks <= 0 || p.respawn > 0 || p.stun > 0 || p.attack || p.attackLag > 0 || p.shielding || p.rollTime > 0 || p.input.shield || p.grabTarget || p.grabbedBy) return;
     if (kind === 'upair') {
@@ -238,14 +244,14 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
 
   function throwGrab(holder, rawX = 0, rawY = 0) {
     if (!holder.grabTarget) return;
-    if (holder.grabTimer > 1.0) return;            // a grab has to be held for a moment (0.2 s) before the throw
+    if (holder.grabTimer > 1.12) return;           // held for a split second (0.08 s) before it can be thrown
     const target = releaseGrab(holder);
     if (!target || target.stocks <= 0 || target.respawn > 0) return;
     // Throws wear out like other moves, and the thrower rests a little afterwards.
     const uses = (holder.recentAttacks ?? []).filter(a => a.kind === 'grab' && elapsed - a.at <= STALE.window).length;
     const strength = Math.max(STALE.floor, 1 - STALE.step * Math.max(0, uses - 1));
     const dealt = Math.max(1, Math.round(ATTACKS.grab.damage * strength));
-    holder.attackLag = 0.40;
+    holder.attackLag = 0.22 + chainRest(holder, 'grab');
     target.percent = Math.min(999, target.percent + dealt);
     const velocity = throwBrawlVelocity(target.character, target.percent, holder.face, rawX, rawY);
     target.vx = velocity.vx;
@@ -479,8 +485,9 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
       }
       if (p.attack && p.attackTime >= moveData.total) {
         p.attack = null;
-        // nothing was hit (a successful grab ends the attack earlier, in catchFighter): rest a little longer
-        if (!p.attackVictims?.size) p.attackLag = ATTACK_LAG[kind] ?? 0;
+        // Rest a little longer if nothing was hit (a successful grab ends the attack earlier, in catchFighter), and
+        // a little longer again for every time the same move was just used before this one.
+        p.attackLag = (p.attackVictims?.size ? 0 : (ATTACK_LAG[kind] ?? 0)) + chainRest(p, kind);
       }
     }
 
