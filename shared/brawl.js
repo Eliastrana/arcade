@@ -44,13 +44,24 @@ export const BRAWL_EMOTE_LINES = Object.freeze({
   zelda: { text: 'for Hyrule!', speech: 'for Hyrule!', pitch: 1.05, rate: 0.95 },
 });
 
+// startup = delay before the hit comes out, active = how long it can hit, total = until the fighter can act again
+// (the rest after the hit is the "endlag"). Quick moves come out fast and recover fast but hit weakly; heavy moves
+// take longer to come out and leave the fighter open for longer, as in Smash.
 export const ATTACKS = Object.freeze({
-  jab: { damage: 6, base: 145, growth: 470, startup: 0.065, active: 0.11, total: 0.31, reach: 70, radius: 30, angle: 55 },
-  smash: { damage: 15, base: 220, growth: 720, startup: 0.19, active: 0.14, total: 0.66, reach: 83, radius: 36, angle: 58 },
-  special: { damage: 8, base: 165, growth: 535, startup: 0.16, active: 0, total: 0.52, reach: 0, radius: 0, angle: 56 },
-  grab: { damage: 5, base: 155, growth: 465, startup: 0.09, active: 0.11, total: 0.43, reach: 48, radius: 26, angle: 62 },
-  upair: { damage: 7, base: 155, growth: 500, startup: 0.05, active: 0.25, total: 0.46, reach: 42, radius: 35, angle: 80 },
+  jab: { damage: 6, base: 145, growth: 470, startup: 0.08, active: 0.11, total: 0.40, reach: 70, radius: 30, angle: 55 },
+  smash: { damage: 15, base: 220, growth: 720, startup: 0.21, active: 0.14, total: 0.80, reach: 83, radius: 36, angle: 58 },
+  special: { damage: 8, base: 165, growth: 535, startup: 0.20, active: 0, total: 0.90, reach: 0, radius: 0, angle: 56 },
+  grab: { damage: 5, base: 155, growth: 465, startup: 0.13, active: 0.11, total: 0.60, reach: 48, radius: 26, angle: 62 },
+  upair: { damage: 7, base: 155, growth: 500, startup: 0.05, active: 0.25, total: 0.50, reach: 42, radius: 35, angle: 80 },
 });
+
+// Extra rest after an attack that connected with nothing (a grab that finds nobody, a smash into thin air). A move
+// that hits can be followed up at once; whiffing is punished, so mashing a button blindly is not the best plan.
+export const ATTACK_LAG = Object.freeze({ jab: 0.12, smash: 0.26, grab: 0.32, special: 0.12, upair: 0.06 });
+
+// Repeating the same move wears it out: every use in the last STALE.window seconds beyond the first takes
+// STALE.step off its damage and knockback, down to STALE.floor of full strength.
+export const STALE = Object.freeze({ window: 7, step: 0.09, floor: 0.5 });
 
 export const SPAWNS = [290, 670, 385, 575];
 
@@ -60,7 +71,7 @@ export function makeFighter(id, name, character, slot) {
     id, name, character, slot, team: slot % 2 ? 'blue' : 'red', worldVote: 'dolomittene', x, y: 370, vx: 0, vy: 0,
     face: slot % 2 ? -1 : 1, percent: 0, stocks: BRAWL.stocks,
     grounded: false, jumps: 0, coyote: 0, drop: 0,
-    attack: null, attackTime: 0, attackHit: false,
+    attack: null, attackTime: 0, attackHit: false, attackLag: 0, recentAttacks: [],
     shield: 100, shielding: false, shieldBreak: 0, shieldRegenDelay: 0,
     rollTime: 0, rollCooldown: 0, rollDir: 0, rollInput: 0,
     recoveryUsed: false,
@@ -130,7 +141,7 @@ export function resetFighter(p, slot = p.slot) {
   p.vx = 0; p.vy = 0; p.face = slot % 2 ? -1 : 1;
   p.percent = 0; p.stocks = BRAWL.stocks;
   p.grounded = false; p.jumps = 0; p.coyote = 0; p.drop = 0;
-  p.attack = null; p.attackTime = 0; p.attackHit = false;
+  p.attack = null; p.attackTime = 0; p.attackHit = false; p.attackLag = 0; p.recentAttacks = [];
   p.shield = 100; p.shielding = false; p.shieldBreak = 0; p.shieldRegenDelay = 0;
   p.rollTime = 0; p.rollCooldown = 0; p.rollDir = 0; p.rollInput = 0;
   p.recoveryUsed = false;

@@ -1,4 +1,4 @@
-import { BRAWL, BRAWL_WORLDS, BRAWL_TEAMS, BRAWL_EMOTE, BRAWL_EMOTE_LINES, FIGHTERS, ATTACKS, CAPE, EGG_LAY, THUNDER, DIN_FIRE, eggLayDuration, isBrawlRollInvulnerable, makeFighter, knockback, launchBrawlVelocity, waftBrawlAttack, throwBrawlVelocity, resetFighter, isOut, jumpBrawlFighter, recoverBrawlFighter, stepBrawlMovement } from '../shared/brawl.js';
+import { BRAWL, BRAWL_WORLDS, BRAWL_TEAMS, BRAWL_EMOTE, BRAWL_EMOTE_LINES, FIGHTERS, ATTACKS, CAPE, EGG_LAY, ATTACK_LAG, STALE, THUNDER, DIN_FIRE, eggLayDuration, isBrawlRollInvulnerable, makeFighter, knockback, launchBrawlVelocity, waftBrawlAttack, throwBrawlVelocity, resetFighter, isOut, jumpBrawlFighter, recoverBrawlFighter, stepBrawlMovement } from '../shared/brawl.js';
 
 const MAX_PLAYERS = 4;
 const RESULTS_SECONDS = 7;
@@ -200,12 +200,13 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
   }
 
   function attack(p, kind) {
-    if (p.stocks <= 0 || p.respawn > 0 || p.stun > 0 || p.attack || p.shielding || p.rollTime > 0 || p.input.shield || p.grabTarget || p.grabbedBy) return;
+    if (p.stocks <= 0 || p.respawn > 0 || p.stun > 0 || p.attack || p.attackLag > 0 || p.shielding || p.rollTime > 0 || p.input.shield || p.grabTarget || p.grabbedBy) return;
     if (kind === 'upair') {
       if (!recoverBrawlFighter(p, p.input.move)) return;
       events.push({ type: 'recovery', p: p.id, x: p.x, y: p.y });
     }
     p.attack = kind; p.attackTime = 0; p.attackHit = false; p.attackVictims = new Set();
+    p.recentAttacks = [...p.recentAttacks.filter(a => elapsed - a.at <= STALE.window), { kind, at: elapsed }];
     p.emoteTime = 0;
     if (p.input.move) p.face = p.input.move;
     events.push({ type: 'swing', p: p.id, kind, x: p.x, y: p.y });
@@ -237,9 +238,15 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
 
   function throwGrab(holder, rawX = 0, rawY = 0) {
     if (!holder.grabTarget) return;
+    if (holder.grabTimer > 1.0) return;            // a grab has to be held for a moment (0.2 s) before the throw
     const target = releaseGrab(holder);
     if (!target || target.stocks <= 0 || target.respawn > 0) return;
-    target.percent = Math.min(999, target.percent + ATTACKS.grab.damage);
+    // Throws wear out like other moves, and the thrower rests a little afterwards.
+    const uses = (holder.recentAttacks ?? []).filter(a => a.kind === 'grab' && elapsed - a.at <= STALE.window).length;
+    const strength = Math.max(STALE.floor, 1 - STALE.step * Math.max(0, uses - 1));
+    const dealt = Math.max(1, Math.round(ATTACKS.grab.damage * strength));
+    holder.attackLag = 0.40;
+    target.percent = Math.min(999, target.percent + dealt);
     const velocity = throwBrawlVelocity(target.character, target.percent, holder.face, rawX, rawY);
     target.vx = velocity.vx;
     target.vy = velocity.vy;
@@ -254,7 +261,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
     target.lastHitBy = holder.id; target.lastHitAt = elapsed;
     events.push({ type: 'throw', p: holder.id, to: target.id, x: target.x, y: target.y - 38, dirX: velocity.dirX, dirY: velocity.dirY });
     events.push({ type: 'hit', from: holder.id, to: target.id, x: target.x, y: target.y - 38,
-      damage: ATTACKS.grab.damage, percent: target.percent, power: velocity.speed });
+      damage: dealt, percent: target.percent, power: velocity.speed, stale: +strength.toFixed(2) });
   }
 
   function damage(attacker, target, move, x, y, direction) {
@@ -274,10 +281,17 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
       }
       return true;
     }
-    target.percent = Math.min(999, target.percent + move.damage);
+    // A move used again and again in a short time hits weaker (see STALE).
+    const kind = Object.keys(ATTACKS).find(k => ATTACKS[k] === move) ?? 'special';
+    const uses = (attacker.recentAttacks ?? []).filter(a => a.kind === kind && elapsed - a.at <= STALE.window).length;
+    const strength = Math.max(STALE.floor, 1 - STALE.step * Math.max(0, uses - 1));
+    const used = strength < 1
+      ? { ...move, damage: Math.max(1, Math.round(move.damage * strength)), base: move.base * strength, growth: move.growth * strength }
+      : move;
+    target.percent = Math.min(999, target.percent + used.damage);
     target.emoteTime = 0;
-    const speed = knockback(move, target.percent, FIGHTERS[target.character].weight);
-    const launch = launchBrawlVelocity(speed, move.angle, direction);
+    const speed = knockback(used, target.percent, FIGHTERS[target.character].weight);
+    const launch = launchBrawlVelocity(speed, used.angle, direction);
     target.vx = launch.vx;
     target.vy = launch.vy;
     target.rollTime = 0;
@@ -286,7 +300,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
     target.attack = null; target.flash = 0.18;
     target.lastHitBy = attacker.id; target.lastHitAt = elapsed;
     events.push({ type: 'hit', from: attacker.id, to: target.id, x, y,
-      damage: move.damage, percent: target.percent, power: speed });
+      damage: used.damage, percent: target.percent, power: speed, stale: +strength.toFixed(2) });
     return true;
   }
 
@@ -390,6 +404,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
     p.flash = Math.max(0, p.flash - dt);
     p.emoteTime = Math.max(0, p.emoteTime - dt);
     p.emoteCooldown = Math.max(0, p.emoteCooldown - dt);
+    p.attackLag = Math.max(0, p.attackLag - dt);
     p.spinTime = Math.max(0, p.spinTime - dt);
     if (p.eggTime > 0) {
       p.eggTime = Math.max(0, p.eggTime - dt);
@@ -462,7 +477,11 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
           }
         }
       }
-      if (p.attack && p.attackTime >= moveData.total) p.attack = null;
+      if (p.attack && p.attackTime >= moveData.total) {
+        p.attack = null;
+        // nothing was hit (a successful grab ends the attack earlier, in catchFighter): rest a little longer
+        if (!p.attackVictims?.size) p.attackLag = ATTACK_LAG[kind] ?? 0;
+      }
     }
 
     if (isOut(p)) {
