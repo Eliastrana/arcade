@@ -45,6 +45,10 @@ function resolve(urlPath) {
   return (fs.existsSync(f) && fs.statSync(f).isFile()) ? f : null;
 }
 const server = http.createServer((req, res) => {
+  if (req.url.split('?')[0] === '/api/brawl-rooms') {
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+    return res.end(JSON.stringify({ rooms: [...brawlRooms.values()].map(r => ({ id: r.id, players: r.size(), phase: r.phase(), open: r.open() })) }));
+  }
   const file = resolve(req.url.split('?')[0]);
   if (!file) { res.writeHead(404); return res.end('not found'); }
   fs.readFile(file, (err, buf) => {
@@ -74,7 +78,22 @@ const CHARACTERS = new Set(['soldier']);
 const players = new Map();      // ws -> player
 const inputs  = new Map();      // ws -> queued inputs
 const skyPlayers = new Map();   // a separate live room for Skyhook Summit
-const brawlRoom = createBrawlRoom();
+// Slagbrødrene runs any number of rooms at once. There are no codes: a new player is put in the open room (between
+// matches, with a free slot) that already has the most people waiting, so people gather in one place, and if there is
+// none a new room is started. A room is removed when its last player leaves.
+const MAX_BRAWL_ROOMS = 20;
+const brawlRooms = new Map();    // id -> room
+let nextBrawlRoomId = 1;
+function brawlRoomFor() {
+  let best = null;
+  for (const room of brawlRooms.values()) if (room.open() && (!best || room.size() > best.size())) best = room;
+  if (best) return best;
+  if (brawlRooms.size >= MAX_BRAWL_ROOMS) return null;
+  const id = nextBrawlRoomId++;
+  const room = createBrawlRoom({ id, onEmpty: () => { room.dispose(); brawlRooms.delete(id); } });
+  brawlRooms.set(id, room);
+  return room;
+}
 let nextId = 1;
 let nextSkyId = 1;
 let fx = [];                    // tracers created this tick
@@ -103,7 +122,12 @@ const wss = new WebSocketServer({ server, maxPayload: 1024 });
 
 wss.on('connection', (ws, req) => {
   const game = new URL(req.url || '/', 'http://localhost').searchParams.get('game');
-  if (game === 'brawl') { brawlRoom.join(ws); return; }
+  if (game === 'brawl') {
+    const room = brawlRoomFor();
+    if (!room) { ws.close(1013, 'all rooms are full'); return; }
+    room.join(ws);
+    return;
+  }
   if (game === 'skyhook') {
     const id = nextSkyId++;
     const colors = ['#ec5578','#70def0','#ffd16a','#9a7cff','#8ee08e','#ff995e'];

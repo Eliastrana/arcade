@@ -394,7 +394,7 @@ function onState(s) {
   status.textContent = me?.spectator && (s.phase === 'playing' || s.phase === 'countdown') ? 'Ser på · neste kamp' :
     s.phase === 'playing' ? `Direkte · ${formatTime(s.elapsed)}` :
     s.phase === 'countdown' ? 'Kampen starter' :
-    s.phase === 'results' ? 'Kampen er over' : 'Lobby · venter på spillere';
+    s.phase === 'results' ? 'Kampen er over' : `Lobby · rom ${s.room ?? 1} · venter på spillere`;
   const sorted = [...s.players].sort((a, b) => a.id - b.id);
   const active = sorted.filter(p => !p.spectator);
   const teamMode = s.mode === 'teams';

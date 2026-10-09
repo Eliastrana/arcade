@@ -5,7 +5,9 @@ const RESULTS_SECONDS = 7;
 const IDLE_MATCH_MS = 45_000;
 const LIMIT = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
-export function createBrawlRoom() {
+// One match room. Several of these run side by side: server/index.js puts each new player in the open room with the
+// most people waiting, or starts a new one. `onEmpty` is called when the last player leaves, so the room can be removed.
+export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
   const clients = new Map();
   let nextId = 1;
   let nextProjectile = 1;
@@ -61,6 +63,7 @@ export function createBrawlRoom() {
     openLobby(); elapsed = 0;
     mode = 'ffa'; friendlyFire = false;
     projectiles = []; events = [];
+    onEmpty?.();
   }
 
   function finish(forceDraw = false) {
@@ -576,7 +579,7 @@ export function createBrawlRoom() {
 
   function snapshot() {
     const data = JSON.stringify({
-      t: 'brawl-state', frame, phase, countdown: +countdown.toFixed(2), elapsed: +elapsed.toFixed(3),
+      t: 'brawl-state', room: roomId, frame, phase, countdown: +countdown.toFixed(2), elapsed: +elapsed.toFixed(3),
       winner, winnerTeam, mode, friendlyFire, hostId: hostId(), world,
       players: [...clients.values()].map(p => ({
         id: p.id, name: p.name, character: p.character, team: p.team, worldVote: p.worldVote,
@@ -607,9 +610,17 @@ export function createBrawlRoom() {
 
   function sendRaw(ws, data) { if (ws.readyState === 1) ws.send(data); }
   // Keep the published state on the same 60 Hz cadence as the simulation.
-  setInterval(() => {
+  const loop = setInterval(() => {
     tick();
     if (clients.size) snapshot();
   }, BRAWL.tick * 1000);
-  return { join };
+  return {
+    join,
+    id: roomId,
+    /** Newcomers may join between matches while there is a free slot. */
+    open: () => (phase === 'lobby' || phase === 'results') && participants().length < MAX_PLAYERS,
+    size: () => participants().length,
+    phase: () => phase,
+    dispose: () => clearInterval(loop),
+  };
 }
