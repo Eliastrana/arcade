@@ -53,14 +53,30 @@ export const ATTACKS = Object.freeze({
   special: { damage: 8, base: 165, growth: 535, startup: 0.16, active: 0, total: 0.52, reach: 0, radius: 0, angle: 56 },
   grab: { damage: 5, base: 155, growth: 465, startup: 0.09, active: 0.11, total: 0.43, reach: 48, radius: 26, angle: 62 },
   upair: { damage: 7, base: 155, growth: 500, startup: 0.05, active: 0.25, total: 0.46, reach: 42, radius: 35, angle: 80 },
+  // the second special (key U): what it does depends on the fighter, see SPECIAL2
+  special2: { damage: 7, base: 150, growth: 480, startup: 0.10, active: 0, total: 0.50, reach: 0, radius: 0, angle: 50 },
 });
 
 // Extra rest after an attack that connected with nothing (a grab that finds nobody, a smash into thin air). A move
 // that hits can be followed up at once; whiffing is punished, so mashing a button blindly is not the best plan.
-export const ATTACK_LAG = Object.freeze({ jab: 0.10, smash: 0.22, grab: 0.28, special: 0.10, upair: 0.05 });
+export const ATTACK_LAG = Object.freeze({ jab: 0.10, smash: 0.22, grab: 0.28, special: 0.10, upair: 0.05, special2: 0.10 });
 
 // Repeating the same move: each use within CHAIN.window seconds of the one before adds CHAIN.step seconds of rest
 // after it (up to CHAIN.max). The first use, and a use after a pause, has no extra rest at all.
+// The second special of every fighter (key U), the one that fits them best:
+//   Mario     a bouncing fireball                 Isabelle  a fast slingshot pellet
+//   Yoshi     rolls forward inside an egg         Pikachu   a lightning-quick dash that hits at the end
+//   Wario     a heavy shoulder charge             Zelda     teleports a short way (once in the air until she lands)
+// "rush" moves carry the fighter forward for `time` seconds and hit each opponent they touch once.
+export const SPECIAL2 = Object.freeze({
+  mario: { fireball: { speed: 430, gravity: 1100, bounce: 3, life: 1.7, damage: 5, base: 105, growth: 330, angle: 45 } },
+  isabelle: { sling: { speed: 900, life: 0.75, damage: 4, base: 95, growth: 280, angle: 50 } },
+  yoshi: { rush: { kind: 'eggroll', speed: 320, time: 0.62, reach: 34, damage: 7, base: 140, growth: 430, angle: 52 } },
+  pikachu: { rush: { kind: 'quick', speed: 1150, time: 0.15, reach: 36, damage: 6, base: 135, growth: 400, angle: 60, endOnHit: true, invuln: 0.2 } },
+  wario: { rush: { kind: 'shoulder', speed: 430, time: 0.40, reach: 40, damage: 12, base: 215, growth: 640, angle: 40 } },
+  zelda: { farore: { distance: 165, lift: 140, invuln: 0.28 } },
+});
+
 export const CHAIN = Object.freeze({ window: 1.6, step: 0.08, max: 0.42 });
 
 // Repeating the same move wears it out: every use in the last STALE.window seconds beyond the first takes
@@ -75,7 +91,7 @@ export function makeFighter(id, name, character, slot) {
     id, name, character, slot, team: slot % 2 ? 'blue' : 'red', worldVote: 'dolomittene', x, y: 370, vx: 0, vy: 0,
     face: slot % 2 ? -1 : 1, percent: 0, stocks: BRAWL.stocks,
     grounded: false, jumps: 0, coyote: 0, drop: 0,
-    attack: null, attackTime: 0, attackHit: false, attackLag: 0, recentAttacks: [],
+    attack: null, attackTime: 0, attackHit: false, attackLag: 0, recentAttacks: [], rush: null, tpUsed: false,
     shield: 100, shielding: false, shieldBreak: 0, shieldRegenDelay: 0,
     rollTime: 0, rollCooldown: 0, rollDir: 0, rollInput: 0,
     recoveryUsed: false,
@@ -145,7 +161,7 @@ export function resetFighter(p, slot = p.slot) {
   p.vx = 0; p.vy = 0; p.face = slot % 2 ? -1 : 1;
   p.percent = 0; p.stocks = BRAWL.stocks;
   p.grounded = false; p.jumps = 0; p.coyote = 0; p.drop = 0;
-  p.attack = null; p.attackTime = 0; p.attackHit = false; p.attackLag = 0; p.recentAttacks = [];
+  p.attack = null; p.attackTime = 0; p.attackHit = false; p.attackLag = 0; p.recentAttacks = []; p.rush = null; p.tpUsed = false;
   p.shield = 100; p.shielding = false; p.shieldBreak = 0; p.shieldRegenDelay = 0;
   p.rollTime = 0; p.rollCooldown = 0; p.rollDir = 0; p.rollInput = 0;
   p.recoveryUsed = false;

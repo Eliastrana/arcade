@@ -1,4 +1,4 @@
-import { BRAWL, BRAWL_WORLDS, BRAWL_TEAMS, BRAWL_EMOTE, BRAWL_EMOTE_LINES, FIGHTERS, ATTACKS, CAPE, EGG_LAY, ATTACK_LAG, CHAIN, STALE, THUNDER, DIN_FIRE, eggLayDuration, isBrawlRollInvulnerable, makeFighter, knockback, launchBrawlVelocity, waftBrawlAttack, throwBrawlVelocity, resetFighter, isOut, jumpBrawlFighter, recoverBrawlFighter, stepBrawlMovement } from '../shared/brawl.js';
+import { BRAWL, BRAWL_WORLDS, BRAWL_TEAMS, BRAWL_EMOTE, BRAWL_EMOTE_LINES, FIGHTERS, ATTACKS, CAPE, EGG_LAY, ATTACK_LAG, CHAIN, STALE, SPECIAL2, THUNDER, DIN_FIRE, eggLayDuration, isBrawlRollInvulnerable, makeFighter, knockback, launchBrawlVelocity, waftBrawlAttack, throwBrawlVelocity, resetFighter, isOut, jumpBrawlFighter, recoverBrawlFighter, stepBrawlMovement } from '../shared/brawl.js';
 
 const MAX_PLAYERS = 4;
 const RESULTS_SECONDS = 7;
@@ -288,7 +288,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
       return true;
     }
     // A move used again and again in a short time hits weaker (see STALE).
-    const kind = Object.keys(ATTACKS).find(k => ATTACKS[k] === move) ?? 'special';
+    const kind = move.staleKind ?? Object.keys(ATTACKS).find(k => ATTACKS[k] === move) ?? 'special';
     const uses = (attacker.recentAttacks ?? []).filter(a => a.kind === kind && elapsed - a.at <= STALE.window).length;
     const strength = Math.max(STALE.floor, 1 - STALE.step * Math.max(0, uses - 1));
     const used = strength < 1
@@ -303,7 +303,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
     target.rollTime = 0;
     target.grounded = false; target.coyote = 0;
     target.stun = LIMIT(0.1 + speed / 1550, 0.18, 0.9);
-    target.attack = null; target.flash = 0.18;
+    target.attack = null; target.rush = null; target.flash = 0.18;
     target.lastHitBy = attacker.id; target.lastHitAt = elapsed;
     events.push({ type: 'hit', from: attacker.id, to: target.id, x, y,
       damage: used.damage, percent: target.percent, power: speed, stale: +strength.toFixed(2) });
@@ -336,6 +336,51 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
       x: p.x + p.face * 32, y: p.y - 42, vx: p.face * style.speed,
       vy: style.vy, life: 1.55, bounce: style.bounce, ...style });
     events.push({ type: 'projectile', p: p.id, x: p.x, y: p.y });
+  }
+
+  // ---- the second specials (key U)
+  function fireSpecial2(p) {
+    const s = SPECIAL2[p.character];
+    if (!s) return;
+    if (s.fireball || s.sling) {
+      const m = s.fireball ?? s.sling;
+      projectiles.push({ id: nextProjectile++, owner: p.id, character: p.character, kind: s.fireball ? 'fire' : 'sling',
+        x: p.x + p.face * 30, y: p.y - 40, vx: p.face * m.speed, vy: s.fireball ? -60 : 0, gravity: m.gravity ?? 0,
+        bounce: m.bounce ?? 0, life: m.life, damage: m.damage, base: m.base, growth: m.growth, angle: m.angle, staleKind: 'special2' });
+    } else if (s.rush) {
+      const r = s.rush;
+      p.rush = { kind: r.kind, dir: p.face, speed: r.speed, time: r.time, reach: r.reach, endOnHit: !!r.endOnHit, victims: new Set(),
+        move: { damage: r.damage, base: r.base, growth: r.growth, angle: r.angle, staleKind: 'special2' } };
+      if (r.invuln) p.invuln = Math.max(p.invuln, r.invuln);
+      events.push({ type: 'rush', p: p.id, kind: r.kind, x: p.x, y: p.y });
+    } else if (s.farore) {
+      // Teleport sideways (the way she is pushing, else the way she faces). In the air it works once until she lands.
+      if (!p.grounded && p.tpUsed) return;
+      const f = s.farore, dir = p.input.move || p.face, fromX = p.x, fromY = p.y;
+      p.x = LIMIT(p.x + dir * f.distance, -60, BRAWL.width + 60);
+      if (!p.grounded) { p.vy = Math.min(p.vy, -f.lift); p.tpUsed = true; }
+      p.vx = 0; p.invuln = Math.max(p.invuln, f.invuln);
+      events.push({ type: 'farore', p: p.id, x: fromX, y: fromY, x2: p.x, y2: p.y });
+    }
+    events.push({ type: 'special2', p: p.id, x: p.x, y: p.y });
+  }
+
+  function stepRush(p, dt) {
+    const r = p.rush;
+    if (!r) return;
+    if (p.stun > 0 || p.grabbedBy || p.respawn > 0) { p.rush = null; return; }
+    p.x += (r.dir * r.speed - p.vx) * dt;               // the walking speed cap in stepBrawlMovement is lifted for a rush
+    p.vx = r.dir * r.speed; p.face = r.dir;
+    r.time -= dt;
+    for (const target of participants()) {
+      if (target.id === p.id || r.victims.has(target.id)) continue;
+      if (Math.abs(target.x - p.x) > r.reach + 12 || Math.abs(target.y - p.y) > 58) continue;
+      if (damage(p, target, r.move, target.x, target.y - 38, r.dir)) {
+        r.victims.add(target.id); p.attackVictims?.add(target.id);
+        if (r.endOnHit) r.time = 0;
+      }
+    }
+    if (r.time <= 0) { p.vx *= 0.25; p.rush = null; }
   }
 
   function sweepCape(p) {
@@ -427,7 +472,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
         p.hookedBy = null; p.hookTime = 0;
         p.spinTime = 0; p.spinDir = 0; p.eggTime = 0;
         p.emoteTime = 0; p.emoteCooldown = 0;
-        p.grounded = false; p.lastHitBy = null; p.lastHitAt = -Infinity;
+        p.grounded = false; p.lastHitBy = null; p.lastHitAt = -Infinity; p.rush = null; p.tpUsed = false;
         events.push({ type: 'respawn', p: p.id });
       }
       return;
@@ -455,6 +500,8 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
     const wasRolling = p.rollTime > 0;
     if (stepBrawlMovement(p, move, dt, freshInput && p.input.shield)) events.push({ type: 'land', p: p.id, x: p.x, y: p.y });
     if (!wasRolling && p.rollTime > 0) events.push({ type: 'roll', p: p.id, x: p.x, y: p.y, dir: p.rollDir });
+    if (p.grounded) p.tpUsed = false;
+    stepRush(p, dt);
 
     if (p.attack) {
       const kind = p.attack;
@@ -468,7 +515,11 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
         else if (p.character === 'pikachu') summonThunder(p);
         else spawnProjectile(p);
       }
-      if (kind !== 'special' && p.attackTime >= moveData.startup && p.attackTime < moveData.startup + moveData.active) {
+      if (kind === 'special2' && !p.attackHit && p.attackTime >= moveData.startup) {
+        p.attackHit = true;
+        fireSpecial2(p);
+      }
+      if (kind !== 'special' && kind !== 'special2' && p.attackTime >= moveData.startup && p.attackTime < moveData.startup + moveData.active) {
         for (const target of participants()) {
           if (target.id === p.id || p.attackVictims.has(target.id)) continue;
           const forward = (target.x - p.x) * p.face;
@@ -487,7 +538,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
         p.attack = null;
         // Rest a little longer if nothing was hit (a successful grab ends the attack earlier, in catchFighter), and
         // a little longer again for every time the same move was just used before this one.
-        p.attackLag = (p.attackVictims?.size ? 0 : (ATTACK_LAG[kind] ?? 0)) + chainRest(p, kind);
+        p.attackLag = Math.max((p.attackVictims?.size ? 0 : (ATTACK_LAG[kind] ?? 0)) + chainRest(p, kind), p.rush ? p.rush.time + 0.05 : 0);
       }
     }
 
@@ -498,7 +549,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
       const killer = elapsed - p.lastHitAt < 8 ? participants().find(other => other.id === p.lastHitBy) : null;
       if (killer) killer.kos++;
       events.push({ type: 'ko', p: p.id, by: killer?.id ?? null, stocks: p.stocks, x: p.x, y: p.y });
-      p.attack = null; p.vx = 0; p.vy = 0; p.respawn = p.stocks > 0 ? 1.45 : 9999;
+      p.attack = null; p.rush = null; p.vx = 0; p.vy = 0; p.respawn = p.stocks > 0 ? 1.45 : 9999;
       p.hookedBy = null; p.hookTime = 0;
       p.spinTime = 0; p.spinDir = 0; p.eggTime = 0;
       p.emoteTime = 0;
@@ -613,7 +664,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
         x: +p.x.toFixed(1), y: +p.y.toFixed(1), vx: +p.vx.toFixed(1), vy: +p.vy.toFixed(1),
         face: p.face, percent: p.percent, stocks: p.stocks, grounded: p.grounded,
         jumps: p.jumps, coyote: +p.coyote.toFixed(3), drop: +p.drop.toFixed(3), groundIndex: p.groundIndex ?? -1, seq: p.lastSeq,
-        attack: p.attack, attackTime: +p.attackTime.toFixed(2), stun: +p.stun.toFixed(2),
+        attack: p.attack, rush: p.rush ? p.rush.kind : null, attackTime: +p.attackTime.toFixed(2), stun: +p.stun.toFixed(2),
         shield: +p.shield.toFixed(1), shielding: p.shielding, shieldBreak: +p.shieldBreak.toFixed(2), recoveryUsed: p.recoveryUsed,
         rollTime: +p.rollTime.toFixed(3), rollCooldown: +p.rollCooldown.toFixed(3), rollDir: p.rollDir, rollInput: p.rollInput,
         grabTarget: p.grabTarget, grabbedBy: p.grabbedBy, grabTimer: +p.grabTimer.toFixed(2), throwBounce: +p.throwBounce.toFixed(1),

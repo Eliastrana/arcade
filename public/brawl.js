@@ -245,7 +245,7 @@ function connect() {
       state = m; receivedAt = performance.now();
       timeline.push(m, receivedAt);
       const mine = m.players.find(player => player.id === myId);
-      if (m.phase === 'playing' && mine && !mine.spectator) {
+      if (m.phase === 'playing' && mine && !mine.spectator && !mine.rush) {
         const meanPing = pingTimes.length
           ? pingTimes.reduce((sum, ms) => sum + ms, 0) / pingTimes.length : 70;
         predictor.reconcile(mine, receivedAt, meanPing / 2);
@@ -529,6 +529,11 @@ function onState(s) {
     } else if (event.type === 'cape') sound('cape');
     else if (event.type === 'capeturn') burst(event.x, event.y, '#fff0b1', 13, 170);
     else if (event.type === 'tongue') sound('swing');
+    else if (event.type === 'special2') sound('swing');
+    else if (event.type === 'rush') { burst(event.x, event.y - 20, event.kind === 'quick' ? '#fff4a1' : event.kind === 'shoulder' ? '#dcc999' : '#f6f0cf', 9, 170); sound('swing'); }
+    else if (event.type === 'farore') {
+      burst(event.x, event.y - 38, '#e4a7ff', 16, 200); burst(event.x2, event.y2 - 38, '#f1d68f', 16, 200); sound('recovery');
+    }
     else if (event.type === 'egg') { burst(event.x, event.y, '#f6f0cf', 15, 180); sound('egg'); }
     else if (event.type === 'eggpop') { burst(event.x, event.y, '#fff7dc', 18, 190); sound('eggpop'); }
     else if (event.type === 'thunder') sound('thunder');
@@ -663,6 +668,7 @@ window.addEventListener('keydown', event => {
   else if (key === 'j') action('jab');
   else if (key === 'k') action('smash');
   else if (key === 'l') action('special');
+  else if (key === 'u') action('special2');
   else if (key === 'h') action('grab');
   else if (key === 'i') action('upair');
   else if (key === 'e') action('emote');
@@ -672,7 +678,7 @@ window.addEventListener('keyup', event => keys.delete(event.key.toLowerCase()));
 window.addEventListener('blur', () => keys.clear());
 for (const [id, key, actionName] of [
   ['tl', 'touchleft'], ['tr', 'touchright'], ['tj', null, 'jump'],
-  ['ta', null, 'jab'], ['ts', null, 'smash'], ['tp', null, 'special'],
+  ['ta', null, 'jab'], ['ts', null, 'smash'], ['tp', null, 'special'], ['tq', null, 'special2'],
   ['tg', null, 'grab'], ['tshield', 'touchshield'], ['tu', null, 'upair'],
 ]) {
   const button = document.getElementById(id);
@@ -910,6 +916,25 @@ function drawProjectile(p, lag, now, players) {
     ctx.restore();
     return;
   }
+  if (p.kind === 'fire') {                       // a bouncing fireball: layered, flickering circles and a short tail
+    const flick = frame % 2 ? 2 : 0;
+    ctx.save();
+    ctx.fillStyle = '#ff7a2a66'; ctx.fillRect(x - direction * 26, y - 5, 20, 10);
+    ctx.fillStyle = '#ff9a3acc'; ctx.fillRect(x - direction * 15, y - 7, 14, 14);
+    for (const [r, color] of [[13 + flick, '#e8501f'], [10, '#ff8a2b'], [6, '#ffd35a'], [3, '#fff7cf']]) {
+      ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+    return;
+  }
+  if (p.kind === 'sling') {                      // a small, fast pellet with a thin streak behind it
+    ctx.save();
+    ctx.fillStyle = '#f6edd566'; ctx.fillRect(x - direction * 30, y - 1, 26, 3);
+    ctx.fillStyle = '#7a5a3a'; ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#c99a62'; ctx.beginPath(); ctx.arc(x - 1, y - 1, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    return;
+  }
   if (p.character === 'isabelle') {
     const owner = players.find(player => player.id === p.owner);
     if (owner) {
@@ -1065,6 +1090,33 @@ function drawPlayer(p, lag) {
     ctx.translate(-x, 37 - y);
     drawFighter(ctx, p.character, x, y, 2.1, p.face, p.attack, p.attackTime,
       p.invuln > 0 || isBrawlRollInvulnerable(p));
+    ctx.restore();
+  } else if (p.rush === 'eggroll') {
+    // rolling forward inside a plain egg (a generic egg shape, tumbling in the direction of travel)
+    const turn = performance.now() / 85 * p.face;
+    ctx.save(); ctx.translate(x, y - 30); ctx.rotate(turn);
+    ctx.fillStyle = '#233f45'; ctx.beginPath(); ctx.ellipse(0, 0, 29, 35, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff2cd'; ctx.beginPath(); ctx.ellipse(0, 0, 26, 32, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = character.color;
+    for (const [dx, dy] of [[-11, -16], [10, -8], [-4, 10], [13, 16], [-15, 6]]) ctx.fillRect(dx - 3, dy - 3, 7, 7);
+    ctx.restore();
+    ctx.fillStyle = '#e8e1b555'; ctx.fillRect(x - p.face * 52, y - 12, 34, 8);
+  } else if (p.rush === 'quick') {
+    // a lightning dash: fading copies behind the fighter and a bright streak
+    for (let i = 3; i >= 1; i--) {
+      ctx.globalAlpha = 0.16 * (4 - i);
+      drawFighter(ctx, p.character, x - p.face * i * 30, y, 2.1, p.face, null, 0, false);
+    }
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#fff4a1aa'; ctx.fillRect(x - p.face * 110, y - 46, 100, 5);
+    ctx.fillStyle = '#ffffffcc'; ctx.fillRect(x - p.face * 90, y - 33, 80, 3);
+    drawFighter(ctx, p.character, x, y, 2.1, p.face, null, 0, false);
+  } else if (p.rush === 'shoulder') {
+    // a heavy shoulder charge: leaning into it, with dust kicked up behind
+    ctx.fillStyle = '#dcc999aa';
+    for (let i = 0; i < 3; i++) ctx.fillRect(x - p.face * (30 + i * 18) - 6, y - 6 - i * 5, 12 + i * 3, 6 + i * 2);
+    ctx.save(); ctx.translate(x, y); ctx.rotate(p.face * 0.24);
+    drawFighter(ctx, p.character, 0, 0, 2.1, p.face, 'smash', 0.3, false);
     ctx.restore();
   } else if (p.emoteTime > 0 && p.grounded && !p.attack) drawDance(p, x, y);
   else drawFighter(ctx, p.character, x, y, 2.1, p.face, p.attack, p.attackTime, p.invuln > 0);
