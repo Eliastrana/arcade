@@ -12,8 +12,8 @@ export const BRAWL = Object.freeze({
 });
 
 export const BRAWL_WORLDS = Object.freeze({
-  dolomittene: 'dolomittene',
-  nightcity: 'natteby',
+  dolomittene: 'Dolomittene',
+  nightcity: 'Natteby',
 });
 
 export const BRAWL_TEAMS = Object.freeze({ red: '#f27a72', blue: '#79beff' });
@@ -36,10 +36,10 @@ export const BRAWL_ROLL = Object.freeze({ duration: 0.34, cooldown: 0.8, speed: 
   invulnStart: 0.05, invulnEnd: 0.25, shieldCost: 8 });
 export const BRAWL_EMOTE = Object.freeze({ duration: 1.8, cooldown: 2.4 });
 export const BRAWL_EMOTE_LINES = Object.freeze({
-  mario: { text: 'det er meg, Mario!', speech: 'det er meg, Mario!', pitch: 1.15, rate: 1.08 },
+  mario: { text: 'Det er meg, Mario!', speech: 'Det er meg, Mario!', pitch: 1.15, rate: 1.08 },
   yoshi: { text: 'Yoshi!', speech: 'Yoshi!', pitch: 1.8, rate: 1.2 },
   pikachu: { text: 'Pika pika!', speech: 'Pika pika!', pitch: 1.75, rate: 1.28 },
-  isabelle: { text: 'la oss danse!', speech: 'la oss danse!', pitch: 1.45, rate: 1.08 },
+  isabelle: { text: 'La oss danse!', speech: 'La oss danse!', pitch: 1.45, rate: 1.08 },
   wario: { text: 'wah-ha-ha!', speech: 'wah ha ha!', pitch: 0.7, rate: 0.9 },
   zelda: { text: 'for Hyrule!', speech: 'for Hyrule!', pitch: 1.05, rate: 0.95 },
 });

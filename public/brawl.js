@@ -25,7 +25,7 @@ backdropImage.onload = () => {
 backdropImage.src = '/brawl-mountains.png';
 // make sure the pixel fonts are ready before text is drawn on the canvas
 document.fonts?.load('19px "PixelText"').catch(() => {});
-const TEAM_NAMES = { red: 'rød', blue: 'blå' };
+const TEAM_NAMES = { red: 'Rød', blue: 'Blå' };
 const lobby = document.querySelector('#lobby');
 const splashScreen = document.querySelector('#splash');
 const countdownEl = document.querySelector('#countdown');
@@ -81,14 +81,14 @@ function send(t, values = {}) {
 
 function showNetStats() {
   if (socket?.readyState !== WebSocket.OPEN || document.hidden) {
-    netStats.textContent = 'ping — · tap —';
+    netStats.textContent = 'Ping — · Tap —';
     netStats.className = '';
     return;
   }
   const averagePing = pingTimes.length ? pingTimes.reduce((sum, ms) => sum + ms, 0) / pingTimes.length : null;
   const ping = averagePing === null ? '—' : `${Math.round(averagePing)} ms`;
   const loss = probeResults.length ? Math.round(100 * probeResults.filter(ok => !ok).length / probeResults.length) : null;
-  netStats.textContent = `${probeMode === 'http' ? 'web-ping' : 'ping'} ${ping} · tap ${loss === null ? '—' : `${loss}%`}`;
+  netStats.textContent = `${probeMode === 'http' ? 'Web-ping' : 'Ping'} ${ping} · Tap ${loss === null ? '—' : `${loss}%`}`;
   netStats.title = probeMode === 'http'
     ? 'Web-ping måler en HTTPS-forespørsel, ikke spillforbindelsen. Tap teller forespørsler som feilet eller tok over 2,5 sekunder.'
     : 'Tap teller WebSocket-målinger som ikke ble besvart innen 2,5 sekunder. Det er ikke ekte IP-pakketap.';
@@ -180,7 +180,7 @@ function connect() {
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
   socket = new WebSocket(`${protocol}//${location.host}/?game=brawl`);
   socket.onopen = () => {
-    status.textContent = 'tilkoblet';
+    status.textContent = 'Tilkoblet';
     timeline.clear(); predictor.reset(); inputVersion = 1; inputSeq = 0; queuedJump = false; queuedUpair = false;
     combatFeatures = false; throwsEnabled = false; teamsEnabled = false; emotesEnabled = false;
     stopEmoteSpeech();
@@ -224,10 +224,10 @@ function connect() {
       if (availableWorlds.length) send('brawl-world', { world: selectedWorld });
       if (nameInput.value.trim()) send('brawl-name', { name: nameInput.value.trim() });
     } else if (m.t === 'welcome') {
-      status.textContent = 'spillserveren starter snart på nytt';
+      status.textContent = 'Spillserveren starter snart på nytt';
       hint.textContent = 'De nye spillfilene er lagt ut. Venter på at spilltjenesten på trashcan starter på nytt.';
       readyButton.disabled = true;
-      readyButton.textContent = 'serveroppdatering venter';
+      readyButton.textContent = 'Serveroppdatering venter';
       pendingRestart = true;
       socket.close();
     } else if (m.t === 'brawl-state') {
@@ -251,9 +251,9 @@ function connect() {
     emoteButton.hidden = true;
     stopEmoteSpeech();
     myId = null; state = null; lobby.hidden = splash;
-    status.textContent = pendingRestart ? 'spillserveren starter snart på nytt' : 'kobler til igjen …';
+    status.textContent = pendingRestart ? 'Spillserveren starter snart på nytt' : 'Kobler til igjen …';
     readyButton.disabled = true;
-    readyButton.textContent = pendingRestart ? 'serveroppdatering venter' : 'kobler til igjen …';
+    readyButton.textContent = pendingRestart ? 'Serveroppdatering venter' : 'Kobler til igjen …';
     setTimeout(connect, pendingRestart ? 10000 : 1500);
   };
 }
@@ -375,12 +375,12 @@ function onState(s) {
   const self = s.players.find(p => p.id === myId);
   emoteButton.hidden = !emotesEnabled || s.phase !== 'playing' || !self || self.spectator || self.stocks <= 0;
   emoteButton.disabled = !self || self.respawn > 0 || !self.grounded || self.emoteCooldown > 0;
-  emoteButton.textContent = self?.emoteCooldown > 0 ? `dans ${self.emoteCooldown.toFixed(1)}s` : 'dans · e';
+  emoteButton.textContent = self?.emoteCooldown > 0 ? `Dans ${self.emoteCooldown.toFixed(1)} s` : 'Dans · E';
   const matchWorld = Object.hasOwn(BRAWL_WORLDS, s.world) ? s.world : 'dolomittene';
   const shownWorld = s.phase === 'playing' || s.phase === 'countdown' ? matchWorld : selectedWorld;
   document.body.dataset.world = shownWorld;
   worldStatus.textContent = s.phase === 'playing' || s.phase === 'countdown'
-    ? BRAWL_WORLDS[matchWorld] : `verdensvalg · ${BRAWL_WORLDS[selectedWorld]}`;
+    ? BRAWL_WORLDS[matchWorld] : `Verdensvalg · ${BRAWL_WORLDS[selectedWorld]}`;
   for (const card of worldCards) {
     const votes = s.players.filter(p => !p.spectator && p.worldVote === card.key).length;
     card.count.textContent = `${votes} ${votes === 1 ? 'stemme' : 'stemmer'}`;
@@ -392,10 +392,10 @@ function onState(s) {
   lastUiSignature = uiSignature;
   const me = s.players.find(p => p.id === myId);
   lobby.hidden = splash || s.phase === 'playing' || s.phase === 'countdown';
-  status.textContent = me?.spectator && (s.phase === 'playing' || s.phase === 'countdown') ? 'ser på · neste kamp' :
-    s.phase === 'playing' ? `direkte · ${formatTime(s.elapsed)}` :
-    s.phase === 'countdown' ? 'kampen starter' :
-    s.phase === 'results' ? 'kampen er over' : 'lobby · venter på spillere';
+  status.textContent = me?.spectator && (s.phase === 'playing' || s.phase === 'countdown') ? 'Ser på · neste kamp' :
+    s.phase === 'playing' ? `Direkte · ${formatTime(s.elapsed)}` :
+    s.phase === 'countdown' ? 'Kampen starter' :
+    s.phase === 'results' ? 'Kampen er over' : 'Lobby · venter på spillere';
   const sorted = [...s.players].sort((a, b) => a.id - b.id);
   const active = sorted.filter(p => !p.spectator);
   const teamMode = s.mode === 'teams';
@@ -403,8 +403,8 @@ function onState(s) {
     blue: active.filter(p => p.team === 'blue').length };
   const bothTeams = teamCounts.red > 0 && teamCounts.blue > 0;
   const canConfigure = myId === s.hostId && s.phase === 'lobby';
-  matchRule.textContent = teamMode ? `lagkamp · lagskade ${s.friendlyFire ? 'på' : 'av'} · 3 liv`
-    : 'siste mann står · 3 liv';
+  matchRule.textContent = teamMode ? `Lagkamp · lagskade ${s.friendlyFire ? 'på' : 'av'} · 3 liv`
+    : 'Siste mann står · 3 liv';
   modeFfa.classList.toggle('selected', !teamMode);
   modeTeams.classList.toggle('selected', teamMode);
   modeFfa.setAttribute('aria-pressed', String(!teamMode));
@@ -414,7 +414,7 @@ function onState(s) {
   friendlyFireButton.disabled = !canConfigure;
   friendlyFireButton.classList.toggle('selected', !!s.friendlyFire);
   friendlyFireButton.setAttribute('aria-pressed', String(!!s.friendlyFire));
-  friendlyFireButton.textContent = `lagskade: ${s.friendlyFire ? 'på' : 'av'}`;
+  friendlyFireButton.textContent = `Lagskade: ${s.friendlyFire ? 'på' : 'av'}`;
   teamGrid.hidden = !teamMode;
   for (const button of teamButtons) {
     const team = button.dataset.team;
@@ -424,17 +424,17 @@ function onState(s) {
     button.disabled = !me || me.spectator || s.phase !== 'lobby' ||
       (me.team !== team && teamCounts[team] >= 2);
   }
-  modeHint.textContent = canConfigure ? 'du er romvert · velg kampregler'
-    : 'romverten velger kampmodus og lagskade';
+  modeHint.textContent = canConfigure ? 'Du er romvert · velg kampregler'
+    : 'Romverten velger kampmodus og lagskade';
   roster.replaceChildren(...sorted.map(p => {
     const div = document.createElement('div');
     div.className = `rosterName${p.ready ? ' ready' : ''}${p.id === myId ? ' mine' : ''}${teamMode && !p.spectator ? ` ${p.team}` : ''}`;
-    div.textContent = `${p.spectator ? 'ser på · ' : p.ready ? '✓ ' : '○ '}${teamMode && !p.spectator ? `${TEAM_NAMES[p.team]} · ` : ''}${p.name} · ${(FIGHTERS[p.character]?.label || 'mario').toLowerCase()}`;
+    div.textContent = `${p.spectator ? 'Ser på · ' : p.ready ? '✓ ' : '○ '}${teamMode && !p.spectator ? `${TEAM_NAMES[p.team]} · ` : ''}${p.name} · ${FIGHTERS[p.character]?.label || 'Mario'}`;
     return div;
   }));
   card.classList.toggle('results', s.phase === 'results');
   updatePodium(sorted.filter(p => !p.spectator), teamMode);
-  if (!sorted.length) hint.textContent = 'venter på spillere …';
+  if (!sorted.length) hint.textContent = 'Venter på spillere …';
   else if (me?.spectator) hint.textContent = 'Rommet er fullt. Du blir med i en senere kamp når det blir en ledig plass.';
   else if (s.phase === 'results') {
     const victor = sorted.find(p => p.id === s.winner);
@@ -442,12 +442,12 @@ function onState(s) {
       : victor ? `${victor.name} vinner! Trykk start for en ny runde.` : 'Runden er over. Trykk start for å spille igjen.';
   } else hint.textContent = `${active.filter(p => p.ready).length}/${active.length} klare · ${teamMode && !bothTeams ? 'trenger ett rødt og ett blått lag' : 'minst to spillere · opptil fire kan slåss'}`;
   readyButton.disabled = !me || me.spectator;
-  readyButton.textContent = me?.spectator ? 'venter på plass' :
-    s.phase === 'results' ? 'start neste kamp' : me?.ready ? 'avbryt klar' : 'start / klar';
+  readyButton.textContent = me?.spectator ? 'Venter på plass' :
+    s.phase === 'results' ? 'Start neste kamp' : me?.ready ? 'Avbryt klar' : 'Start / klar';
   if (s.phase === 'results') {
     const victor = sorted.find(p => p.id === s.winner);
     document.querySelector('.card h1').textContent = teamMode && s.winnerTeam ? `${TEAM_NAMES[s.winnerTeam]} lag vinner!`
-      : victor ? `${victor.name} vinner!` : 'uavgjort!';
+      : victor ? `${victor.name} vinner!` : 'Uavgjort!';
   } else document.querySelector('.card h1').textContent = 'Slagbrødre';
   scores.replaceChildren(...active.map(p => {
     const div = document.createElement('div');
@@ -467,7 +467,7 @@ function onState(s) {
     damage.append(stocks); div.append(who, damage, shieldTrack);
     if (p.character === 'wario') {
       const meter = document.createElement('div'); meter.className = 'waftMeter';
-      const label = document.createElement('span'); label.textContent = 'fis';
+      const label = document.createElement('span'); label.textContent = 'Fis';
       const track = document.createElement('div'); track.className = 'waftTrack';
       const fill = document.createElement('div'); fill.className = 'waftFill';
       track.append(fill); meter.append(label, track); div.append(meter);
@@ -485,7 +485,7 @@ function onState(s) {
   }
   throwPad.hidden = !throwsEnabled || !s.players.some(p => p.id === myId && p.grabTarget);
   if (previousPhase !== s.phase) {
-    if (s.phase === 'playing') { setFlash('kjør!', 850); sound('go'); }
+    if (s.phase === 'playing') { setFlash('Kjør!', 850); sound('go'); }
     previousPhase = s.phase;
   }
   for (const event of s.events) {
@@ -495,11 +495,11 @@ function onState(s) {
       sound('hit', event.power);
     } else if (event.type === 'ko') {
       burst(event.x, Math.max(35, Math.min(470, event.y)), '#fff3bf', 30, 360);
-      setFlash(event.stocks > 0 ? 'liv tapt!' : 'k.o.!', 900);
+      setFlash(event.stocks > 0 ? 'Liv tapt!' : 'K.O.!', 900);
       shake = 13; sound('ko');
     } else if (event.type === 'swing') sound('swing');
     else if (event.type === 'block') { burst(event.x, event.y - 38, '#9be7ff', 8, 140); sound('block'); }
-    else if (event.type === 'shieldbreak') { burst(event.x, event.y - 38, '#fff5b7', 24, 260); setFlash('skjoldet knust!', 750); sound('shieldbreak'); }
+    else if (event.type === 'shieldbreak') { burst(event.x, event.y - 38, '#fff5b7', 24, 260); setFlash('Skjoldet knust!', 750); sound('shieldbreak'); }
     else if (event.type === 'grab') { burst(event.x, event.y, '#ffd3a6', 10, 160); sound('grab'); }
     else if (event.type === 'throw') { burst(event.x, event.y, '#ffe0a1', 15, 225); sound('throw'); }
     else if (event.type === 'recovery') { burst(event.x, event.y, '#b2eaff', 12, 170); sound('recovery'); }
@@ -532,7 +532,7 @@ function onState(s) {
       speakEmote(event);
     }
     else if (event.type === 'jump' || event.type === 'doublejump') sound('jump');
-    else if (event.type === 'go') setFlash('kjør!', 850);
+    else if (event.type === 'go') setFlash('Kjør!', 850);
   }
 }
 
@@ -549,8 +549,8 @@ const initialCards = Object.entries(FIGHTERS).map(([key, fighter]) => {
   const context = portrait.getContext('2d'); context.imageSmoothingEnabled = false;
   context.fillStyle = '#173b4b'; context.fillRect(0, 0, 88, 105);
   drawFighter(context, key, 44, 94, 2.55, 1, null, 0, false);
-  const label = document.createElement('strong'); label.textContent = fighter.label.toLowerCase();
-  const special = document.createElement('small'); special.textContent = fighter.special.toLowerCase();
+  const label = document.createElement('strong'); label.textContent = fighter.label;
+  const special = document.createElement('small'); special.textContent = fighter.special;
   button.append(portrait, label, special);
   button.addEventListener('click', () => {
     selected = key; initialCards.forEach((card, i) => card.classList.toggle('selected', Object.keys(FIGHTERS)[i] === key));
@@ -583,7 +583,7 @@ function updateWorldSelection() {
   for (const card of worldCards) card.button.classList.toggle('selected', card.key === selectedWorld);
   if (state?.phase !== 'playing' && state?.phase !== 'countdown') {
     document.body.dataset.world = selectedWorld;
-    worldStatus.textContent = `world vote · ${BRAWL_WORLDS[selectedWorld]}`;
+    worldStatus.textContent = `Verdensvalg · ${BRAWL_WORLDS[selectedWorld]}`;
   }
 }
 updateWorldSelection();
@@ -1080,7 +1080,7 @@ function drawPlayer(p, lag) {
     ctx.beginPath(); ctx.moveTo(x + p.face * 15, y - 43);
     ctx.lineTo(x + p.face * 37, y - 48); ctx.stroke();
     ctx.fillStyle = '#ffe0a1'; ctx.font = '17px "PixelText", monospace'; ctx.textAlign = 'center';
-    ctx.fillText('kast!', x, y - 111);
+    ctx.fillText('Kast!', x, y - 111);
     ctx.fillStyle = '#25454b'; ctx.fillRect(x - 27, y - 105, 54, 5);
     ctx.fillStyle = '#ffe0a1'; ctx.fillRect(x - 27, y - 105, Math.max(0, Math.min(54, p.grabTimer / 1.2 * 54)), 5);
   }
@@ -1102,7 +1102,7 @@ function drawPlayer(p, lag) {
       ctx.stroke();
     }
   }
-  const label = p.id === myId ? 'du' : p.name;
+  const label = p.id === myId ? 'Du' : p.name;
   ctx.font = '19px "PixelText", monospace'; ctx.textAlign = 'center';
   const textWidth = ctx.measureText(label).width;
   ctx.fillStyle = '#153748e8'; ctx.fillRect(x - textWidth / 2 - 9, y - 90, textWidth + 18, 20);
@@ -1253,7 +1253,7 @@ function leaveSplash() {
 }
 playButton.addEventListener('click', leaveSplash);
 function showMuteState() {
-  muteButton.textContent = music.muted ? '♪ av' : '♪ på';
+  muteButton.textContent = music.muted ? '♪ Av' : '♪ På';
   muteButton.setAttribute('aria-pressed', String(!music.muted));
   muteButton.title = music.muted ? 'Slå på musikken' : 'Slå av musikken';
   volumeSlider.value = String(Math.round(music.volume * 100));
@@ -1309,7 +1309,7 @@ function updatePodium(players, teamMode) {
     f.ready = p.ready;
     f.stateIcon.classList.toggle('on', p.ready);
     f.stateIcon.textContent = p.ready ? '✓' : '…';
-    f.stateIcon.title = p.ready ? 'klar' : 'ikke klar';
+    f.stateIcon.title = p.ready ? 'Klar' : 'Ikke klar';
     f.el.classList.toggle('mine', p.id === myId);
     f.el.style.setProperty('--team', teamMode && BRAWL_TEAMS[p.team] ? BRAWL_TEAMS[p.team] : '');
   });
