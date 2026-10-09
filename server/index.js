@@ -20,7 +20,7 @@ const ROOT = path.join(HERE, '..');
 const PORT = Number(process.env.PORT) || 3001;
 
 // ---------------------------------------------------------------- static
-const TYPES = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css', '.png':'image/png', '.webp':'image/webp', '.svg':'image/svg+xml', '.mp3':'audio/mpeg', '.ogg':'audio/ogg', '.glb':'model/gltf-binary' };
+const TYPES = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css', '.png':'image/png', '.webp':'image/webp', '.svg':'image/svg+xml', '.mp3':'audio/mpeg', '.ttf':'font/ttf', '.ogg':'audio/ogg', '.glb':'model/gltf-binary' };
 const ROUTES = {
   '/':                       path.join(ROOT, 'public/brawl.html'),
   '/arena':                  path.join(ROOT, 'public/arena.html'),
@@ -62,7 +62,7 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, {
       'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream', 'Accept-Ranges': 'bytes',
       // no-cache so a plain refresh always picks up edits; the files are tiny
-      'Cache-Control': 'no-cache, must-revalidate',
+      'Cache-Control': /\.ttf$/.test(file) ? 'public, max-age=86400' : 'no-cache, must-revalidate',
     });
     res.end(buf);
   });

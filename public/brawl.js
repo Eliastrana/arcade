@@ -23,6 +23,8 @@ backdropImage.onload = () => {
   drawWorldPreviews();
 };
 backdropImage.src = '/brawl-mountains.png';
+// make sure the pixel fonts are ready before text is drawn on the canvas
+document.fonts?.load('19px "PixelText"').catch(() => {});
 const TEAM_NAMES = { red: 'rød', blue: 'blå' };
 const lobby = document.querySelector('#lobby');
 const splashScreen = document.querySelector('#splash');
@@ -963,7 +965,7 @@ function drawDance(p, x, y, target) {
   } else if (p.character === 'isabelle') {
     // A gentle two-step with floating music notes.
     ctx.fillStyle = '#fff1a9';
-    ctx.font = 'bold 20px ui-monospace,monospace'; ctx.textAlign = 'center';
+    ctx.font = '26px "PixelText", monospace'; ctx.textAlign = 'center';
     ctx.fillText('♪', px - 34, py - 69 - Math.abs(wide) * 9);
     ctx.fillText('♫', px + 36, py - 77 - Math.abs(beat) * 8);
   } else if (p.character === 'wario') {
@@ -987,7 +989,7 @@ function drawEmoteLine(p, x, y) {
   if (!line || p.emoteTime <= 0) return;
   ctx.save();
   ctx.globalAlpha = Math.min(1, p.emoteTime * 5);
-  ctx.font = 'bold 12px ui-monospace,monospace';
+  ctx.font = '19px "PixelText", monospace';
   ctx.textAlign = 'center';
   const width = Math.ceil(ctx.measureText(line).width) + 18;
   const left = Math.max(5, Math.min(BRAWL.width - width - 5, Math.round(x - width / 2)));
@@ -1077,7 +1079,7 @@ function drawPlayer(p, lag) {
     ctx.strokeStyle = '#ffe0a1'; ctx.lineWidth = 5;
     ctx.beginPath(); ctx.moveTo(x + p.face * 15, y - 43);
     ctx.lineTo(x + p.face * 37, y - 48); ctx.stroke();
-    ctx.fillStyle = '#ffe0a1'; ctx.font = 'bold 11px ui-monospace,monospace'; ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffe0a1'; ctx.font = '17px "PixelText", monospace'; ctx.textAlign = 'center';
     ctx.fillText('kast!', x, y - 111);
     ctx.fillStyle = '#25454b'; ctx.fillRect(x - 27, y - 105, 54, 5);
     ctx.fillStyle = '#ffe0a1'; ctx.fillRect(x - 27, y - 105, Math.max(0, Math.min(54, p.grabTimer / 1.2 * 54)), 5);
@@ -1101,7 +1103,7 @@ function drawPlayer(p, lag) {
     }
   }
   const label = p.id === myId ? 'du' : p.name;
-  ctx.font = 'bold 12px ui-monospace,monospace'; ctx.textAlign = 'center';
+  ctx.font = '19px "PixelText", monospace'; ctx.textAlign = 'center';
   const textWidth = ctx.measureText(label).width;
   ctx.fillStyle = '#153748e8'; ctx.fillRect(x - textWidth / 2 - 9, y - 90, textWidth + 18, 20);
   if (teamColor) { ctx.fillStyle = teamColor; ctx.fillRect(x - textWidth / 2 - 9, y - 90, 4, 20); }
