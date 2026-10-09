@@ -28,6 +28,12 @@ document.fonts?.load('19px "PixelText"').catch(() => {});
 const TEAM_NAMES = { red: 'Rød', blue: 'Blå' };
 const lobby = document.querySelector('#lobby');
 const splashScreen = document.querySelector('#splash');
+const roomsScreen = document.querySelector('#rooms');
+const roomList = document.querySelector('#roomList');
+const roomsHint = document.querySelector('#roomsHint');
+const quickPlayButton = document.querySelector('#quickPlay');
+const newRoomButton = document.querySelector('#newRoom');
+const leaveRoomButton = document.querySelector('#leaveRoom');
 const countdownEl = document.querySelector('#countdown');
 const muteButton = document.querySelector('#muteButton');
 const volumeSlider = document.querySelector('#volume');
@@ -70,6 +76,10 @@ const pendingPings = new Map(), pingTimes = [], probeResults = [];
 let audio = null, shake = 0, particles = [], waftEffects = [], dinEffects = [], previousPhase = null;
 let speakingPlayerId = null, activeUtterance = null;
 let visibleFlash = '', flashUntil = 0;
+let browsing = false;       // after the title screen: choosing a room (no connection to a room yet)
+let wantRoom = 'auto';      // 'auto', 'new' or a room number; only the first connection uses it, reconnects go back to 'auto'
+let leaving = false;        // the person chose to leave the room, so the closing socket must not reconnect
+let welcomed = false;
 let splash = true;          // the title screen shows first; its background is a scripted fight (see "attract mode" below)
 let lastUiSignature = '';
 nameInput.value = localStorage.getItem('brawl-name') || '';
@@ -177,7 +187,8 @@ document.addEventListener('visibilitychange', () => {
 
 function connect() {
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  socket = new WebSocket(`${protocol}//${location.host}/?game=brawl`);
+  welcomed = false;
+  socket = new WebSocket(`${protocol}//${location.host}/?game=brawl&room=${encodeURIComponent(wantRoom)}`);
   socket.onopen = () => {
     status.textContent = 'Tilkoblet';
     timeline.clear(); predictor.reset(); inputVersion = 1; inputSeq = 0; queuedJump = false; queuedUpair = false;
@@ -197,6 +208,7 @@ function connect() {
     if (m.t === 'net-pong') {
       recordPong(m.id);
     } else if (m.t === 'brawl-welcome') {
+      welcomed = true; wantRoom = 'auto';
       pendingRestart = false;
       myId = m.id;
       inputVersion = m.inputVersion || 1;
@@ -241,7 +253,7 @@ function connect() {
       onState(m);
     }
   };
-  socket.onclose = () => {
+  socket.onclose = (event) => {
     clearInterval(pingTimer); pingTimer = null;
     httpProbe?.abort();
     pendingPings.clear(); showNetStats();
@@ -249,7 +261,9 @@ function connect() {
     throwPad.hidden = true;
     emoteButton.hidden = true;
     stopEmoteSpeech();
-    myId = null; state = null; lobby.hidden = splash;
+    myId = null; state = null; lobby.hidden = splash || browsing;
+    if (leaving) { leaving = false; return; }                       // went back to the room list on purpose
+    if (!welcomed && event.code === 1013) { showRooms('Rommet er ikke lenger åpent. Velg et annet.'); return; }   // the chosen room closed or was full
     status.textContent = pendingRestart ? 'Spillserveren starter snart på nytt' : 'Kobler til igjen …';
     readyButton.disabled = true;
     readyButton.textContent = pendingRestart ? 'Serveroppdatering venter' : 'Kobler til igjen …';
@@ -390,7 +404,7 @@ function onState(s) {
   if (uiSignature !== lastUiSignature) {
   lastUiSignature = uiSignature;
   const me = s.players.find(p => p.id === myId);
-  lobby.hidden = splash || s.phase === 'playing' || s.phase === 'countdown';
+  lobby.hidden = splash || browsing || s.phase === 'playing' || s.phase === 'countdown';
   status.textContent = me?.spectator && (s.phase === 'playing' || s.phase === 'countdown') ? 'Ser på · neste kamp' :
     s.phase === 'playing' ? `Direkte · ${formatTime(s.elapsed)}` :
     s.phase === 'countdown' ? 'Kampen starter' :
@@ -639,6 +653,7 @@ window.addEventListener('keydown', event => {
     if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); leaveSplash(); }
     return;
   }
+  if (browsing) return;
   if (event.target === nameInput) return;
   const key = event.key.toLowerCase();
   if ([' ', 'arrowleft', 'arrowright', 'arrowdown', 'arrowup'].includes(key)) event.preventDefault();
@@ -1243,12 +1258,77 @@ function demoStep(dt) {
 function leaveSplash() {
   if (!splash) return;
   splash = false;
-  document.body.classList.remove('splash');
   splashScreen.hidden = true;
   demoBots = []; particles = []; shake = 0;
-  lobby.hidden = state ? state.phase === 'playing' || state.phase === 'countdown' : false;
-  if (!lobby.hidden) nameInput.focus({ preventScroll: true });
+  showRooms('');
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The room list: every room that exists, who is in it, and whether it can be joined. No codes. "Hurtigspill" puts you
+// in the open room with the most people waiting (or a new one), "Nytt rom" always starts a new one.
+let roomsTimer = 0;
+async function refreshRooms() {
+  try {
+    const response = await fetch('/api/brawl-rooms', { cache: 'no-store' });
+    if (!response.ok) throw new Error(String(response.status));
+    renderRooms((await response.json()).rooms || []);
+  } catch {
+    roomList.replaceChildren(Object.assign(document.createElement('div'), { className: 'roomEmpty', textContent: 'Fikk ikke kontakt med serveren. Prøver igjen …' }));
+  }
+}
+
+function renderRooms(rooms) {
+  if (!rooms.length) {
+    roomList.replaceChildren(Object.assign(document.createElement('div'), { className: 'roomEmpty', textContent: 'Ingen rom ennå. Trykk «Hurtigspill» eller «Nytt rom».' }));
+    return;
+  }
+  roomList.replaceChildren(...rooms.map(room => {
+    const row = document.createElement('div'); row.className = `roomRow${room.open ? '' : ' closed'}`; row.setAttribute('role', 'listitem');
+    const name = document.createElement('span'); name.className = 'roomName'; name.textContent = `Rom ${room.id}`;
+    const who = document.createElement('span'); who.className = 'roomWho'; who.textContent = (room.names || []).join(', ') || '—';
+    const count = document.createElement('span'); count.className = 'roomCount'; count.textContent = `${room.players}/4`;
+    const stateLabel = document.createElement('span'); stateLabel.className = 'roomState';
+    stateLabel.textContent = room.phase === 'lobby' ? 'Venter' : room.phase === 'results' ? 'Resultater' : 'I kamp';
+    const join = document.createElement('button'); join.type = 'button'; join.className = 'roomJoin';
+    join.textContent = room.open ? 'Bli med' : room.players >= 4 ? 'Fullt' : 'I kamp';
+    join.disabled = !room.open;
+    join.addEventListener('click', () => chooseRoom(String(room.id)));
+    row.append(name, who, count, stateLabel, join);
+    return row;
+  }));
+}
+
+function showRooms(message) {
+  browsing = true;
+  document.body.classList.add('splash');             // keeps the in-game HUD hidden while choosing
+  lobby.hidden = true;
+  roomsScreen.hidden = false;
+  roomsHint.textContent = message || '';
+  refreshRooms();
+  clearInterval(roomsTimer);
+  roomsTimer = setInterval(refreshRooms, 2000);
+}
+
+function chooseRoom(choice) {
+  clearInterval(roomsTimer);
+  browsing = false;
+  wantRoom = choice;
+  roomsScreen.hidden = true;
+  document.body.classList.remove('splash');
+  status.textContent = 'Kobler til …';
+  connect();
+}
+quickPlayButton.addEventListener('click', () => chooseRoom('auto'));
+newRoomButton.addEventListener('click', () => chooseRoom('new'));
+
+// Back from a room to the room list.
+leaveRoomButton.addEventListener('click', () => {
+  leaving = true;
+  socket?.close();
+  state = null; myId = null; lastUiSignature = '';
+  updatePodium([], false);
+  showRooms('');
+});
 playButton.addEventListener('click', leaveSplash);
 function showMuteState() {
   muteButton.textContent = music.muted ? '♪ Av' : '♪ På';
@@ -1429,7 +1509,7 @@ function render(now) {
     if (countdownEl.textContent !== number) countdownEl.textContent = number;
   }
   music.set(!splash && (state?.phase === 'countdown' || state?.phase === 'playing') ? 'battle' : 'title');
-  music.dim(!splash && !lobby.hidden);                  // quieter behind the menu (the lobby form)
+  music.dim(!splash && (browsing || !lobby.hidden));                  // quieter behind the menu (the lobby form)
   for (const effect of waftEffects) effect.life -= dt;
   waftEffects = waftEffects.filter(effect => effect.life > 0);
   for (const effect of dinEffects) effect.life -= dt;
@@ -1447,4 +1527,4 @@ function render(now) {
   flash.textContent = now < flashUntil ? visibleFlash : '';
   requestAnimationFrame(render);
 }
-connect(); requestAnimationFrame(render);
+requestAnimationFrame(render);                 // the connection is made when a room is chosen (see chooseRoom)

@@ -40,6 +40,22 @@
   #splash{position:fixed;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:clamp(18px,7vh,70px) 16px clamp(18px,5vh,48px);pointer-events:none;background:linear-gradient(#10293a99,transparent 38%,transparent 78%,#10293a88)}#splash[hidden]{display:none}
   .splashTitle{text-align:center;text-shadow:5px 5px #4e786a,9px 9px #173b3f}.splashTitle h1{margin:0;font-size:clamp(40px,10vw,112px);line-height:.95;color:#f6f8e8;letter-spacing:-.02em}.splashTitle p{margin:12px 0 0;font-size:clamp(12px,2.2vw,18px);color:#e3f1e6;text-shadow:2px 2px #173b3f}
   #play{pointer-events:auto;border:0;background:#abc86e;color:#193847;padding:clamp(14px,2.4vh,20px) clamp(44px,8vw,84px);font:900 clamp(18px,3vw,28px) "PixelText",ui-monospace,SFMono-Regular,Menlo,monospace;cursor:pointer;box-shadow:6px 6px #486b4c;transition:transform .12s,filter .12s}#play:hover,#play:focus-visible{filter:brightness(1.08);transform:translateY(-3px);outline:none}#play:active{transform:translateY(1px);box-shadow:3px 3px #486b4c}
+  .roomsCard h2{margin:0 0 14px;font-family:"Pixel",monospace;font-weight:400;font-size:clamp(14px,2.4vw,22px);line-height:1.3;color:#f6f8e8;text-shadow:3px 3px #4e786a}
+  #roomList{display:grid;gap:8px;margin:0 auto 14px;max-width:560px;max-height:46vh;overflow:auto}
+  .roomRow{display:flex;align-items:center;gap:12px;border:2px solid #749ea0;background:#244c59;padding:8px 10px;text-align:left}
+  .roomRow.closed{opacity:.6}
+  .roomName{flex:none;font-family:"Pixel",monospace;font-size:10px;line-height:1.4;color:#f4f7e9;min-width:62px}
+  .roomWho{flex:1;min-width:0;font-size:20px;line-height:1.1;color:#cae5df;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .roomCount{flex:none;font-family:"Pixel",monospace;font-size:9px;color:#dceca9;min-width:34px;text-align:right}
+  .roomState{flex:none;font-size:19px;color:#d2e7df;min-width:84px;text-align:right}
+  .roomJoin{flex:none;border:2px solid #759c9a;background:#315e5b;color:#f4f7e9;padding:7px 12px;font-family:"Pixel",monospace;font-weight:400;font-size:10px;cursor:pointer}
+  .roomJoin:hover:not(:disabled){border-color:#e8e6a6;background:#42694f}.roomJoin:disabled{opacity:.5;cursor:default}
+  .roomEmpty{padding:18px 8px;font-size:21px;color:#cfe3de}
+  .roomActions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+  #quickPlay{border:0;background:#abc86e;color:#193847;padding:14px 22px;font-family:"Pixel",monospace;font-weight:400;font-size:14px;cursor:pointer;box-shadow:5px 5px #486b4c}#quickPlay:hover{filter:brightness(1.1);transform:translateY(-2px)}
+  #newRoom{border:2px solid #759c9a;background:#244c59;color:#f4f7e9;padding:12px 18px;font-family:"Pixel",monospace;font-weight:400;font-size:12px;cursor:pointer}#newRoom:hover{border-color:#e8e6a6;background:#42694f}
+  #roomsHint{margin-top:12px;min-height:22px;font-size:21px;color:#ffe9a8}
+  #leaveRoom{display:block;margin:0 auto 10px;border:2px solid #759c9a;background:#244c59;color:#f4f7e9;padding:7px 12px;font-family:"Pixel",monospace;font-weight:400;font-size:9px;cursor:pointer}#leaveRoom:hover{border-color:#e8e6a6}
   body.splash #hud,body.splash #controls,body.splash #touch,body.splash #throwPad,body.splash #emoteButton{display:none!important}
   .overlay{position:fixed;inset:0;display:flex;background:#15394ea8;backdrop-filter:blur(2px);padding:clamp(130px,22vh,190px) 14px 14px;z-index:4;overflow:auto;touch-action:pan-y}.overlay[hidden]{display:none}
   .card{margin:auto;width:min(790px,100%);background:#193c4de8;border:3px solid #b8d8c9;box-shadow:10px 10px 0 #112f39;padding:16px 22px;text-align:center}
@@ -120,9 +136,15 @@
 <button id="emoteButton" type="button" aria-label="dans" hidden>Dans · E</button>
 <div id="audioControls"><button id="muteButton" type="button" aria-pressed="true">♪ På</button><input id="volume" type="range" min="0" max="100" step="1" value="50" aria-label="Lydstyrke"></div>
 <div id="splash"><div class="splashTitle"><h1>Slagbrødrene</h1><p>Slåss mot vennene dine</p></div><button id="play" type="button" autofocus>Spill</button></div>
-<div id="lobby" class="overlay" hidden><div class="card"><div id="podium" aria-hidden="true"></div><h1>Slagbrødrene</h1><input id="name" maxlength="16" placeholder="Ditt navn" aria-label="spillernavn"><div id="characterGrid"></div><div id="worldGrid"></div><div id="matchSetup" hidden><div id="modeGrid"><button id="modeFfa" class="modeChoice" type="button">Alle mot alle</button><button id="modeTeams" class="modeChoice" type="button">Lagkamp</button><button id="friendlyFire" class="modeChoice" type="button" hidden>Lagskade: av</button></div><div id="teamGrid" hidden><span>Ditt lag</span><button class="teamChoice red" data-team="red" type="button">Rød 0/2</button><button class="teamChoice blue" data-team="blue" type="button">Blå 0/2</button></div><div id="modeHint">Romverten velger kampregler</div></div><div id="roster"></div><button id="ready">Kobler til …</button><div id="lobbyHint">Venter på serveren …</div></div></div>
+<div id="rooms" class="overlay" hidden><div class="card roomsCard">
+  <h2>Velg rom</h2>
+  <div id="roomList" role="list" aria-live="polite"></div>
+  <div class="roomActions"><button id="quickPlay" type="button">Hurtigspill</button><button id="newRoom" type="button">Nytt rom</button></div>
+  <div id="roomsHint"></div>
+</div></div>
+<div id="lobby" class="overlay" hidden><div class="card"><div id="podium" aria-hidden="true"></div><h1>Slagbrødrene</h1><input id="name" maxlength="16" placeholder="Ditt navn" aria-label="spillernavn"><div id="characterGrid"></div><div id="worldGrid"></div><div id="matchSetup" hidden><div id="modeGrid"><button id="modeFfa" class="modeChoice" type="button">Alle mot alle</button><button id="modeTeams" class="modeChoice" type="button">Lagkamp</button><button id="friendlyFire" class="modeChoice" type="button" hidden>Lagskade: av</button></div><div id="teamGrid" hidden><span>Ditt lag</span><button class="teamChoice red" data-team="red" type="button">Rød 0/2</button><button class="teamChoice blue" data-team="blue" type="button">Blå 0/2</button></div><div id="modeHint">Romverten velger kampregler</div></div><div id="roster"></div><button id="leaveRoom" type="button">Bytt rom</button><button id="ready">Kobler til …</button><div id="lobbyHint">Venter på serveren …</div></div></div>
 <div id="touch" aria-label="berøringskontroller"><button id="tl" aria-label="gå til venstre">◀</button><button id="tr" aria-label="gå til høyre">▶</button><button id="tj" aria-label="hopp">▲</button><button id="ta" aria-label="rask angrep">j</button><button id="ts" aria-label="smash-angrep">k</button><button id="tp" aria-label="spesialangrep">l</button><button id="tg" aria-label="grip" hidden>Grip</button><button id="tshield" aria-label="hold for skjold" hidden>Skjold</button><button id="tu" aria-label="luftangrep opp" hidden>Opp</button></div>
 <div id="throwPad" aria-label="kastretning" hidden><span>Kast</span><button data-x="-1" data-y="0" aria-label="kast til venstre">←</button><button data-x="0" data-y="-1" aria-label="kast opp">↑</button><button data-x="0" data-y="1" aria-label="kast ned">↓</button><button data-x="1" data-y="0" aria-label="kast til høyre">→</button></div>
-<script type="module" src="/brawl.js?v=34"></script>
+<script type="module" src="/brawl.js?v=35"></script>
 </body>
 </html>

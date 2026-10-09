@@ -620,6 +620,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
     /** Newcomers may join between matches while there is a free slot. */
     open: () => (phase === 'lobby' || phase === 'results') && participants().length < MAX_PLAYERS,
     size: () => participants().length,
+    names: () => participants().map(p => p.name),
     phase: () => phase,
     dispose: () => clearInterval(loop),
   };

@@ -47,7 +47,7 @@ function resolve(urlPath) {
 const server = http.createServer((req, res) => {
   if (req.url.split('?')[0] === '/api/brawl-rooms') {
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-    return res.end(JSON.stringify({ rooms: [...brawlRooms.values()].map(r => ({ id: r.id, players: r.size(), phase: r.phase(), open: r.open() })) }));
+    return res.end(JSON.stringify({ max: MAX_BRAWL_ROOMS, rooms: [...brawlRooms.values()].map(r => ({ id: r.id, players: r.size(), names: r.names(), phase: r.phase(), open: r.open() })) }));
   }
   const file = resolve(req.url.split('?')[0]);
   if (!file) { res.writeHead(404); return res.end('not found'); }
@@ -84,15 +84,24 @@ const skyPlayers = new Map();   // a separate live room for Skyhook Summit
 const MAX_BRAWL_ROOMS = 20;
 const brawlRooms = new Map();    // id -> room
 let nextBrawlRoomId = 1;
-function brawlRoomFor() {
-  let best = null;
-  for (const room of brawlRooms.values()) if (room.open() && (!best || room.size() > best.size())) best = room;
-  if (best) return best;
+function newBrawlRoom() {
   if (brawlRooms.size >= MAX_BRAWL_ROOMS) return null;
   const id = nextBrawlRoomId++;
   const room = createBrawlRoom({ id, onEmpty: () => { room.dispose(); brawlRooms.delete(id); } });
   brawlRooms.set(id, room);
   return room;
+}
+// choice: 'auto' (the open room with most people, or a new one), 'new' (always a new room), or a room number from the
+// room list. A chosen room that has closed in the meantime (match started, full, gone) gives null, so the player can pick again.
+function brawlRoomFor(choice = 'auto') {
+  if (choice === 'new') return newBrawlRoom();
+  if (/^\d+$/.test(choice)) {
+    const room = brawlRooms.get(Number(choice));
+    return room && room.open() ? room : null;
+  }
+  let best = null;
+  for (const room of brawlRooms.values()) if (room.open() && (!best || room.size() > best.size())) best = room;
+  return best || newBrawlRoom();
 }
 let nextId = 1;
 let nextSkyId = 1;
@@ -123,8 +132,8 @@ const wss = new WebSocketServer({ server, maxPayload: 1024 });
 wss.on('connection', (ws, req) => {
   const game = new URL(req.url || '/', 'http://localhost').searchParams.get('game');
   if (game === 'brawl') {
-    const room = brawlRoomFor();
-    if (!room) { ws.close(1013, 'all rooms are full'); return; }
+    const room = brawlRoomFor(new URL(req.url || '/', 'http://localhost').searchParams.get('room') || 'auto');
+    if (!room) { ws.close(1013, 'room not available'); return; }
     room.join(ws);
     return;
   }
