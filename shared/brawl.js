@@ -32,6 +32,8 @@ export const FIGHTERS = Object.freeze({
   shrek: { label: 'Shrek', color: '#86b653', accent: '#e9d7a6', speed: 260, weight: 1.16, jump: 565, air: 0.91, special: 'Stor slimball · sumpdam', recovery: 745, recoveryDrift: 255 },
   snape: { label: 'Snape', color: '#343a4d', accent: '#b4a6d7', speed: 274, weight: 0.97, jump: 590, air: 1.02, special: 'Confundo · Protego-motstøt', recovery: 815, recoveryDrift: 285 },
   draco: { label: 'Draco', color: '#7d997f', accent: '#d6e1b0', speed: 292, weight: 0.94, jump: 602, air: 1.05, special: 'Serpensortia · ilderforhekselse', recovery: 835, recoveryDrift: 305 },
+  katniss: { label: 'Katniss Everdeen', color: '#4d624c', accent: '#c9a86c', speed: 290, weight: 0.94, jump: 610, air: 1.05, special: 'Gjennomtrengende pil · pilregn', recovery: 835, recoveryDrift: 300 },
+  spiderman: { label: 'Spider-Man', color: '#c53b45', accent: '#4c7cbe', speed: 313, weight: 0.91, jump: 625, air: 1.12, special: 'Spindelvev · nett-trampoline', recovery: 870, recoveryDrift: 335 },
 });
 
 export const DIN_FIRE = Object.freeze({ radius: 62, damage: 10, base: 175, growth: 525, angle: 73 });
@@ -52,6 +54,12 @@ export const SERPENT = Object.freeze({ duration: 3.2, speed: 170, seekRange: 285
   bite: Object.freeze({ damage: 6, base: 115, growth: 350, angle: 48, staleKind: 'special' }) });
 export const FERRET = Object.freeze({ range: 205, height: 95, duration: 2, speedFactor: 1.25,
   damage: 2, base: 0, growth: 0, angle: 90, staleKind: 'special2' });
+export const KATNISS_ARROW = Object.freeze({ speed: 980, life: 1.1, damage: 8, base: 145, growth: 440, angle: 48, pierce: 2 });
+export const ARROW_RAIN = Object.freeze({ count: 5, spacing: 43, range: 390, fallSpeed: 550, gravity: 260,
+  damage: 5, base: 110, growth: 345, angle: 75 });
+export const WEB_SHOT = Object.freeze({ speed: 740, life: 1.1, bindDuration: 1.05,
+  damage: 3, base: 0, growth: 0, angle: 90 });
+export const WEB_PAD = Object.freeze({ radius: 72, duration: 4, bounce: 680 });
 export const BRAWL_ROLL = Object.freeze({ duration: 0.34, cooldown: 0.8, speed: 440,
   invulnStart: 0.05, invulnEnd: 0.25, shieldCost: 8 });
 export const BRAWL_EMOTE = Object.freeze({ duration: 1.8, cooldown: 2.4 });
@@ -68,6 +76,8 @@ export const BRAWL_EMOTE_LINES = Object.freeze({
   shrek: { text: 'Ut av sumpen min!', speech: 'Ut av sumpen min!', pitch: 0.68, rate: 0.88 },
   snape: { text: 'Always.', speech: 'Always.', lang: 'en-GB', pitch: 0.68, rate: 0.8 },
   draco: { text: 'My father will hear about this!', speech: 'My father will hear about this!', lang: 'en-GB', pitch: 1.22, rate: 1.08 },
+  katniss: { text: 'I voulenteer as tribute!', speech: 'I voulenteer as tribute!', lang: 'en-US', pitch: 1.1, rate: 1.02 },
+  spiderman: { text: 'With great power comes great responsibility.', speech: 'With great power comes great responsibility.', lang: 'en-US', pitch: 1.08, rate: 1.05 },
 });
 
 // startup = delay before the hit comes out, active = how long it can hit, total = until the fighter can act again.
@@ -96,6 +106,7 @@ export const ATTACK_LAG = Object.freeze({ jab: 0.10, smash: 0.22, grab: 0.28, sp
 //   Marx      a train dash                         DOOM      a flying record
 //   Ron       Leviosa for two seconds              Shrek     a slowing swamp puddle
 //   Snape     a one-hit Protego counter             Draco     turns a rival into a ferret
+//   Katniss   a targeted rain of arrows              Spider-Man  a web trampoline
 // "rush" moves carry the fighter forward for `time` seconds and hit each opponent they touch once.
 export const SPECIAL2 = Object.freeze({
   mario: { fireball: { speed: 430, gravity: 1100, bounce: 3, life: 1.7, damage: 5, base: 105, growth: 330, angle: 45 } },
@@ -110,6 +121,8 @@ export const SPECIAL2 = Object.freeze({
   shrek: { puddle: SLIME },
   snape: { protego: PROTEGO },
   draco: { ferret: FERRET },
+  katniss: { arrowRain: ARROW_RAIN },
+  spiderman: { webPad: WEB_PAD },
 });
 
 export const CHAIN = Object.freeze({ window: 1.6, step: 0.08, max: 0.42 });
@@ -133,7 +146,7 @@ export function makeFighter(id, name, character, slot) {
     grabTarget: null, grabbedBy: null, grabTimer: 0, throwBounce: 0,
     hookedBy: null, hookTime: 0, waftCharge: 0,
     spinTime: 0, spinDir: 0, eggTime: 0, slowTime: 0, leviosaTime: 0, leviosaY: 0,
-    confuseTime: 0, wardTime: 0, ferretTime: 0,
+    confuseTime: 0, wardTime: 0, ferretTime: 0, webTime: 0,
     emoteTime: 0, emoteCooldown: 0,
     stun: 0, invuln: 2.3, respawn: 0, ready: false,
     kos: 0, falls: 0, flash: 0,
@@ -204,7 +217,7 @@ export function resetFighter(p, slot = p.slot) {
   p.grabTarget = null; p.grabbedBy = null; p.grabTimer = 0; p.throwBounce = 0;
   p.hookedBy = null; p.hookTime = 0; p.waftCharge = 0;
   p.spinTime = 0; p.spinDir = 0; p.eggTime = 0; p.slowTime = 0; p.leviosaTime = 0; p.leviosaY = 0;
-  p.confuseTime = 0; p.wardTime = 0; p.ferretTime = 0;
+  p.confuseTime = 0; p.wardTime = 0; p.ferretTime = 0; p.webTime = 0;
   p.emoteTime = 0; p.emoteCooldown = 0;
   p.stun = 0; p.invuln = 0; p.respawn = 0; p.kos = 0; p.falls = 0; p.flash = 0;
 }
@@ -245,7 +258,9 @@ export function stepBrawlMovement(p, move, dt, shieldInput = false) {
   const confused = (p.confuseTime || 0) > 0;
   p.confuseTime = Math.max(0, (p.confuseTime || 0) - dt);
   p.ferretTime = Math.max(0, (p.ferretTime || 0) - dt);
+  p.webTime = Math.max(0, (p.webTime || 0) - dt);
   move = confused ? -move : move;
+  if (p.webTime > 0) { move = 0; p.vx = 0; }
   const levitating = (p.leviosaTime || 0) > 0;
   p.leviosaTime = Math.max(0, (p.leviosaTime || 0) - dt);
   p.stun = Math.max(0, p.stun - dt);

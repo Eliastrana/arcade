@@ -1,4 +1,4 @@
-import { BRAWL, BRAWL_WORLDS, BRAWL_TEAMS, BRAWL_ROLL, BRAWL_EMOTE, BRAWL_EMOTE_LINES, FIGHTERS, ATTACKS, CAPE, EGG_LAY, MIC_WAVE, SLIME, CONFUNDO, isBrawlRollInvulnerable, makeFighter, knockback } from '/shared/brawl.js';
+import { BRAWL, BRAWL_WORLDS, BRAWL_TEAMS, BRAWL_ROLL, BRAWL_EMOTE, BRAWL_EMOTE_LINES, FIGHTERS, ATTACKS, CAPE, EGG_LAY, MIC_WAVE, SLIME, CONFUNDO, WEB_SHOT, WEB_PAD, isBrawlRollInvulnerable, makeFighter, knockback } from '/shared/brawl.js';
 import { BrawlTimeline, BrawlPredictor } from '/shared/brawl-client.js';
 import { music } from '/music.js';
 
@@ -559,6 +559,14 @@ function onState(s) {
       burst(event.x, event.y, '#d5ef94', 12, 150); sound('hit', 240);
     } else if (event.type === 'puddle') {
       burst(event.x, event.y, '#a9c46d', 18, 115); sound('waft');
+    } else if (event.type === 'webpad') {
+      burst(event.x, event.y, '#d8efff', 16, 125); sound('recovery');
+    } else if (event.type === 'webbounce') {
+      burst(event.x, event.y, '#e3f7ff', 12, 165); sound('jump');
+    } else if (event.type === 'webbind') {
+      burst(event.x, event.y, '#f2faff', 17, 125); sound('hook');
+    } else if (event.type === 'arrowrain') {
+      burst(event.x, event.y, '#f6dfa6', 19, 160); sound('swing');
     } else if (event.type === 'cape') sound('cape');
     else if (event.type === 'capeturn') burst(event.x, event.y, '#fff0b1', 13, 170);
     else if (event.type === 'tongue') sound('swing');
@@ -898,6 +906,38 @@ function drawFighter(g, character, x, feet, scale, face, attackKind, attackTime,
     r(4, 2, 20, 7, '#e7d78d'); r(5, 5, 19, 3, '#d6c77f'); r(3, 7, 5, 6, '#dacd8d');
     r(10, 11, 2, 3, o); r(18, 11, 2, 3, o); r(13, 15, 6, 2, '#957b73');
     r(24, 8, 2, 17, '#624f46');
+  } else if (character === 'katniss') {
+    // Braid, hunting jacket, quiver and a curved bow in her forward hand.
+    r(3, 28, 9, 5, o); r(4, 29, 7, 4, '#4a3b35');
+    r(16, 28, 9, 5, o); r(17, 29, 7, 4, '#4a3b35');
+    r(4, 15, 20, 15, o); r(5, 16, 18, 13, '#4d624c');
+    r(10, 17, 8, 11, '#716a4d'); r(12, 17, 3, 8, '#b79867');
+    r(1, 13, 5, 14, '#624936'); r(2, 12, 3, 8, '#c9a86c');
+    r(2, 19, 3, 3, '#d4c395'); r(2, 23, 3, 3, '#d4c395');
+    r(2, 18, 6, 10, '#536951');
+    r(attacking ? 22 : 20, attacking ? 12 : 18, 6, 8, '#d8ad86');
+    r(5, 4, 18, 14, o); r(6, 5, 16, 12, '#d9b08b');
+    r(5, 1, 18, 8, '#3b302e'); r(4, 5, 5, 12, '#3b302e');
+    r(21, 5, 4, 15, '#3b302e'); r(23, 13, 3, 13, '#4d3932');
+    r(10, 10, 2, 3, o); r(18, 10, 2, 3, o); r(13, 14, 5, 2, '#9d7864');
+    r(26, 6, 3, 22, '#7a543e'); r(29, 9, 2, 16, '#d4ad73');
+    r(27, 5, 5, 4, '#a47b4f'); r(27, 26, 5, 4, '#a47b4f');
+    r(31, 9, 1, 17, '#ead9ae');
+  } else if (character === 'spiderman') {
+    // Red mask, white eye lenses and the blue sides of the suit.
+    r(3, 28, 9, 5, o); r(4, 29, 8, 4, '#b73846');
+    r(16, 28, 9, 5, o); r(17, 29, 7, 4, '#b73846');
+    r(4, 15, 20, 15, o); r(5, 16, 18, 13, '#4c7cbe');
+    r(9, 16, 10, 10, '#c53b45'); r(12, 18, 4, 5, '#253849');
+    r(10, 20, 8, 2, '#253849'); r(6, 26, 17, 3, '#b73846');
+    r(1, 17, 6, 11, '#c53b45');
+    r(attacking ? 22 : 20, attacking ? 10 : 17, 7, 10, '#c53b45');
+    r(5, 3, 19, 15, o); r(6, 4, 17, 13, '#c53b45');
+    r(7, 8, 7, 5, '#f5f4e8'); r(16, 8, 7, 5, '#f5f4e8');
+    r(8, 11, 5, 2, '#c8dce6'); r(17, 11, 5, 2, '#c8dce6');
+    r(14, 4, 2, 11, '#763d46'); r(6, 7, 18, 1, '#763d46');
+    r(8, 14, 13, 1, '#763d46'); r(3, 20, 4, 2, '#793e4a');
+    r(21, 21, 5, 2, '#793e4a');
   }
   g.restore();
 }
@@ -1154,6 +1194,40 @@ function drawProjectile(p, lag, now, players) {
     ctx.restore();
     return;
   }
+  if (p.kind === 'arrow') {
+    ctx.save(); ctx.translate(x, y); ctx.scale(direction, 1);
+    ctx.fillStyle = '#d5ba85'; ctx.fillRect(-21, -2, 39, 4);
+    ctx.fillStyle = '#f5e6b9'; ctx.fillRect(13, -4, 11, 8);
+    ctx.fillStyle = '#6e855a'; ctx.fillRect(-23, -7, 9, 5); ctx.fillRect(-23, 2, 9, 5);
+    ctx.fillStyle = '#f4ddaa66'; ctx.fillRect(-48, -1, 21, 2);
+    ctx.restore();
+    return;
+  }
+  if (p.kind === 'rainArrow') {
+    ctx.save(); ctx.translate(x, y);
+    if (y < BRAWL.platforms[0].y - 35) {
+      ctx.strokeStyle = '#f1d29a99'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.ellipse(0, BRAWL.platforms[0].y - y - 5, 18, 5, 0, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.fillStyle = '#e8d7a7'; ctx.fillRect(-2, -22, 4, 36);
+    ctx.fillStyle = '#f5eee0'; ctx.fillRect(-6, 11, 12, 11);
+    ctx.fillStyle = '#68815d'; ctx.fillRect(-7, -24, 5, 9); ctx.fillRect(2, -24, 5, 9);
+    ctx.fillStyle = '#f3dfaa55'; ctx.fillRect(-1, -48, 2, 20);
+    ctx.restore();
+    return;
+  }
+  if (p.kind === 'web') {
+    ctx.save(); ctx.translate(x, y);
+    ctx.fillStyle = '#dceefb77'; ctx.fillRect(-28 * direction, -2, 25, 4);
+    ctx.strokeStyle = '#ecf8ff'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); ctx.stroke();
+    for (const angle of [0, Math.PI / 3, Math.PI * 2 / 3]) {
+      ctx.beginPath(); ctx.moveTo(Math.cos(angle) * 13, Math.sin(angle) * 13);
+      ctx.lineTo(-Math.cos(angle) * 13, -Math.sin(angle) * 13); ctx.stroke();
+    }
+    ctx.restore();
+    return;
+  }
   if (['pamphlet', 'knight', 'mud', 'record'].includes(p.kind)) {
     ctx.save();
     ctx.translate(x, y);
@@ -1211,6 +1285,25 @@ function drawProjectile(p, lag, now, players) {
 }
 
 function drawPuddle(p, now) {
+  if (p.kind === 'webpad') {
+    const fade = Math.min(1, p.life * 2, WEB_PAD.duration - p.life + 0.2);
+    ctx.save(); ctx.globalAlpha = fade;
+    ctx.fillStyle = '#d9f0ff66';
+    ctx.beginPath(); ctx.ellipse(p.x, p.y - 5, p.radius, 13, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#ecf8ff'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.ellipse(p.x, p.y - 5, p.radius, 13, 0, 0, Math.PI * 2); ctx.stroke();
+    for (let i = -2; i <= 2; i++) {
+      const offset = i * p.radius / 3;
+      ctx.beginPath(); ctx.moveTo(p.x + offset, p.y - 17);
+      ctx.lineTo(p.x + offset * 0.7, p.y + 7); ctx.stroke();
+    }
+    ctx.beginPath(); ctx.moveTo(p.x - p.radius + 6, p.y - 5);
+    ctx.lineTo(p.x + p.radius - 6, p.y - 5); ctx.stroke();
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(p.x - 4, p.y - 14 + Math.sin(now / 120) * 2, 8, 4);
+    ctx.restore();
+    return;
+  }
   const fade = Math.min(1, p.life * 2, SLIME.puddleDuration - p.life + 0.2);
   ctx.save(); ctx.globalAlpha = fade;
   ctx.fillStyle = '#294c43';
@@ -1277,6 +1370,8 @@ function drawDance(p, x, y, target) {
   else if (p.character === 'shrek') { dx = wide * 2; lift = Math.max(0, beat) * 2; tilt = wide * 0.09; }
   else if (p.character === 'snape') { dx = wide * 2; lift = Math.max(0, beat) * 2; tilt = wide * 0.06; }
   else if (p.character === 'draco') { dx = wide * 4; lift = Math.max(0, beat) * 4; tilt = wide * 0.12; }
+  else if (p.character === 'katniss') { dx = wide * 3; lift = Math.max(0, beat) * 4; tilt = wide * 0.09; }
+  else if (p.character === 'spiderman') { dx = beat * 8; lift = Math.abs(beat) * 5; tilt = beat * 0.18; }
   ctx.save();
   ctx.translate(x + dx, y - 34 - lift);
   ctx.rotate(tilt);
@@ -1339,6 +1434,14 @@ function drawDance(p, x, y, target) {
   } else if (p.character === 'draco') {
     ctx.fillStyle = '#a6d78b'; ctx.fillRect(px + p.face * 34 - 5, py - 67 - lift, 10, 6);
     ctx.fillStyle = '#d9efaf'; ctx.fillRect(px + p.face * 41 - 3, py - 63 - lift, 6, 3);
+  } else if (p.character === 'katniss') {
+    ctx.fillStyle = '#e7c995'; ctx.fillRect(px + p.face * 39 - 13, py - 77 - lift, 25, 3);
+    ctx.fillStyle = '#7b956b'; ctx.fillRect(px + p.face * 43 - 4, py - 82 - lift, 8, 10);
+  } else if (p.character === 'spiderman') {
+    ctx.strokeStyle = '#ebf8ff'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(px + p.face * 24, py - 62 - lift);
+    ctx.lineTo(px + p.face * 50, py - 89 - lift); ctx.stroke();
+    ctx.fillStyle = '#f5fcff'; ctx.fillRect(px + p.face * 50 - 5, py - 94 - lift, 10, 7);
   }
 }
 
@@ -1401,6 +1504,20 @@ function drawPlayer(p, lag) {
     ctx.beginPath(); ctx.ellipse(x, y - 38, 30, 45, 0, 0, Math.PI * 2); ctx.stroke();
     ctx.fillStyle = '#efd3ff'; ctx.font = '22px "PixelText", monospace';
     ctx.textAlign = 'center'; ctx.fillText('?', x - 24, y - 80); ctx.fillText('?', x + 25, y - 64);
+    ctx.restore();
+  }
+  if (p.webTime > 0) {
+    ctx.save();
+    ctx.strokeStyle = '#e9f7ff'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.ellipse(x, y - 38, 30, 42, 0, 0, Math.PI * 2); ctx.stroke();
+    for (let i = -1; i <= 1; i++) {
+      ctx.beginPath(); ctx.moveTo(x - 27, y - 55 + i * 14);
+      ctx.lineTo(x + 27, y - 24 + i * 14); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x + 27, y - 55 + i * 14);
+      ctx.lineTo(x - 27, y - 24 + i * 14); ctx.stroke();
+    }
+    ctx.fillStyle = '#ecf8ff'; ctx.font = '20px "PixelText", monospace';
+    ctx.textAlign = 'center'; ctx.fillText('WEBBED', x, y - 88);
     ctx.restore();
   }
   if (p.wardTime > 0) {

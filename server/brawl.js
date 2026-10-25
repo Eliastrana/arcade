@@ -1,4 +1,4 @@
-import { BRAWL, BRAWL_WORLDS, BRAWL_TEAMS, BRAWL_EMOTE, BRAWL_EMOTE_LINES, FIGHTERS, ATTACKS, CAPE, EGG_LAY, ATTACK_LAG, CHAIN, STALE, SPECIAL2, THUNDER, DIN_FIRE, MIC_WAVE, LEVIOSA, SLIME, CONFUNDO, PROTEGO, SERPENT, FERRET, eggLayDuration, isBrawlRollInvulnerable, makeFighter, knockback, launchBrawlVelocity, waftBrawlAttack, throwBrawlVelocity, resetFighter, isOut, jumpBrawlFighter, recoverBrawlFighter, stepBrawlMovement } from '../shared/brawl.js';
+import { BRAWL, BRAWL_WORLDS, BRAWL_TEAMS, BRAWL_EMOTE, BRAWL_EMOTE_LINES, FIGHTERS, ATTACKS, CAPE, EGG_LAY, ATTACK_LAG, CHAIN, STALE, SPECIAL2, THUNDER, DIN_FIRE, MIC_WAVE, LEVIOSA, SLIME, CONFUNDO, PROTEGO, SERPENT, FERRET, KATNISS_ARROW, ARROW_RAIN, WEB_SHOT, WEB_PAD, eggLayDuration, isBrawlRollInvulnerable, makeFighter, knockback, launchBrawlVelocity, waftBrawlAttack, throwBrawlVelocity, resetFighter, isOut, jumpBrawlFighter, recoverBrawlFighter, stepBrawlMovement } from '../shared/brawl.js';
 
 const MAX_PLAYERS = 4;
 const RESULTS_SECONDS = 7;
@@ -242,6 +242,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
     target.grounded = false; target.coyote = 0; target.drop = 0; target.throwBounce = 0;
     target.hookedBy = null; target.hookTime = 0;
     target.leviosaTime = 0;
+    target.webTime = 0;
     target.x = holder.x + holder.face * 35; target.y = holder.y - 9;
     events.push({ type: 'grab', p: holder.id, to: target.id, x: target.x, y: target.y - 38 });
     return true;
@@ -268,6 +269,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
     target.grounded = false; target.coyote = 0; target.drop = 0;
     target.hookedBy = null; target.hookTime = 0;
     target.leviosaTime = 0;
+    target.webTime = 0;
     target.stun = LIMIT(0.22 + velocity.speed / 1800, 0.28, 0.85);
     target.flash = 0.18;
     target.lastHitBy = holder.id; target.lastHitAt = elapsed;
@@ -289,6 +291,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
     target.throwBounce = 0;
     target.hookedBy = null; target.hookTime = 0;
     target.leviosaTime = 0;
+    target.webTime = 0;
     if (target.shielding && move !== ATTACKS.grab) {
       target.shield = Math.max(0, target.shield - 14 - move.damage * 2.3);
       target.shieldRegenDelay = 0.8;
@@ -348,11 +351,18 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
       ron: { kind: 'knight', speed: 640, vy: -85, gravity: 270, bounce: 0, life: 1.3, damage: 7, base: 145, growth: 430, angle: 55 },
       shrek: { kind: 'mud', speed: 495, vy: -75, gravity: 330, bounce: 0, life: 1.35, radius: SLIME.projectileRadius,
         damage: 8, base: 165, growth: 480, angle: 53 },
+      katniss: { kind: 'arrow', speed: KATNISS_ARROW.speed, vy: 0, gravity: 0, bounce: 0,
+        life: KATNISS_ARROW.life, radius: 16, pierce: KATNISS_ARROW.pierce,
+        damage: KATNISS_ARROW.damage, base: KATNISS_ARROW.base, growth: KATNISS_ARROW.growth, angle: KATNISS_ARROW.angle },
+      spiderman: { kind: 'web', speed: WEB_SHOT.speed, vy: 0, gravity: 0, bounce: 0,
+        life: WEB_SHOT.life, radius: 22, damage: WEB_SHOT.damage, base: WEB_SHOT.base,
+        growth: WEB_SHOT.growth, angle: WEB_SHOT.angle },
     };
     const style = styles[p.character];
     projectiles.push({ id: nextProjectile++, owner: p.id, character: p.character,
       x: p.x + p.face * 32, y: p.y - 42, vx: p.face * style.speed,
-      vy: style.vy, life: 1.55, bounce: style.bounce, staleKind: 'special', ...style });
+      vy: style.vy, life: 1.55, bounce: style.bounce, staleKind: 'special', ...style,
+      victims: new Set() });
     events.push({ type: 'projectile', p: p.id, x: p.x, y: p.y });
   }
 
@@ -439,6 +449,20 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
     events.push({ type: 'puddle', p: p.id, x, y: support.y, radius: SLIME.puddleRadius });
   }
 
+  function createWebPad(p) {
+    const support = BRAWL.platforms.filter(platform => p.x >= platform.x - 12 &&
+      p.x <= platform.x + platform.w + 12 && platform.y >= p.y - 3)
+      .sort((a, b) => a.y - b.y)[0] ?? BRAWL.platforms[0];
+    const inset = Math.min(WEB_PAD.radius, support.w / 2);
+    const x = LIMIT(p.x, support.x + inset, support.x + support.w - inset);
+    const oldest = puddles.find(pad => pad.kind === 'webpad' && pad.owner === p.id);
+    if (puddles.filter(pad => pad.kind === 'webpad' && pad.owner === p.id).length >= 2 && oldest)
+      oldest.life = 0;
+    puddles.push({ id: nextPuddle++, kind: 'webpad', owner: p.id, x, y: support.y,
+      radius: WEB_PAD.radius, life: WEB_PAD.duration });
+    events.push({ type: 'webpad', p: p.id, x, y: support.y });
+  }
+
   // ---- the second specials (key U)
   function fireSpecial2(p) {
     const s = SPECIAL2[p.character];
@@ -456,6 +480,23 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
       events.push({ type: 'rush', p: p.id, kind: r.kind, x: p.x, y: p.y });
     } else if (s.leviosa) {
       castLeviosa(p);
+    } else if (s.arrowRain) {
+      const prey = participants().filter(other => other.id !== p.id && canHit(p, other) &&
+        other.stocks > 0 && other.respawn <= 0 &&
+        (other.x - p.x) * p.face >= 0 && (other.x - p.x) * p.face <= ARROW_RAIN.range)
+        .sort((a, b) => Math.abs(a.x - p.x) - Math.abs(b.x - p.x))[0];
+      const center = LIMIT(prey?.x ?? p.x + p.face * 220, 250, BRAWL.width - 250);
+      for (let i = 0; i < ARROW_RAIN.count; i++) {
+        projectiles.push({ id: nextProjectile++, owner: p.id, character: p.character,
+          kind: 'rainArrow', x: LIMIT(center + (i - 2) * ARROW_RAIN.spacing,
+            BRAWL.platforms[0].x + 20, BRAWL.platforms[0].x + BRAWL.platforms[0].w - 20), y: -35 - i * 39,
+          vx: 0, vy: ARROW_RAIN.fallSpeed, gravity: ARROW_RAIN.gravity, bounce: 0,
+          life: 1.8, radius: 14, damage: ARROW_RAIN.damage, base: ARROW_RAIN.base,
+          growth: ARROW_RAIN.growth, angle: ARROW_RAIN.angle, staleKind: 'special2', victims: new Set() });
+      }
+      events.push({ type: 'arrowrain', p: p.id, x: center, y: 220 });
+    } else if (s.webPad) {
+      createWebPad(p);
     } else if (s.puddle) {
       createPuddle(p);
     } else if (s.protego) {
@@ -583,7 +624,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
         p.hookedBy = null; p.hookTime = 0;
         p.spinTime = 0; p.spinDir = 0; p.eggTime = 0;
         p.slowTime = 0; p.leviosaTime = 0; p.leviosaY = 0;
-        p.confuseTime = 0; p.wardTime = 0; p.ferretTime = 0;
+        p.confuseTime = 0; p.wardTime = 0; p.ferretTime = 0; p.webTime = 0;
         p.emoteTime = 0; p.emoteCooldown = 0;
         p.grounded = false; p.lastHitBy = null; p.lastHitAt = -Infinity; p.rush = null; p.tpUsed = false;
         events.push({ type: 'respawn', p: p.id });
@@ -669,7 +710,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
       p.hookedBy = null; p.hookTime = 0;
       p.spinTime = 0; p.spinDir = 0; p.eggTime = 0;
       p.slowTime = 0; p.leviosaTime = 0; p.leviosaY = 0;
-      p.confuseTime = 0; p.wardTime = 0; p.ferretTime = 0;
+      p.confuseTime = 0; p.wardTime = 0; p.ferretTime = 0; p.webTime = 0;
       p.emoteTime = 0;
       p.shielding = false; p.recoveryUsed = false; p.rollTime = 0; p.rollInput = 0;
       p.x = LIMIT(p.x, 0, BRAWL.width); p.y = -100;
@@ -697,6 +738,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
       }
       if (projectile.vy > 0 && projectile.kind !== 'thunder') {
         for (const platform of BRAWL.platforms) {
+          if (projectile.kind === 'rainArrow' && !platform.main) continue;
           if (previousY <= platform.y && projectile.y >= platform.y &&
               projectile.x >= platform.x && projectile.x <= platform.x + platform.w) {
             if (projectile.kind === 'din') {
@@ -715,17 +757,21 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
         continue;
       }
       for (const target of participants()) {
-        if (target.id === owner.id || !canHit(owner, target)) continue;
+        if (target.id === owner.id || !canHit(owner, target) || projectile.victims?.has(target.id)) continue;
         if (Math.hypot(target.x - projectile.x, target.y - 35 - projectile.y) <
             (projectile.kind === 'thunder' ? THUNDER.radius : projectile.radius ?? 32)) {
           if (projectile.kind === 'din') {
             detonateDin(projectile, owner);
             break;
           }
-          const guarded = target.shielding;
+          const guarded = target.shielding || target.wardTime > 0;
           const hit = damage(owner, target, projectile, projectile.x, projectile.y,
             projectile.kind === 'thunder' ? Math.sign(target.x - projectile.x) || owner.face : Math.sign(projectile.vx));
-          if (hit) projectile.life = 0;
+          if (hit) {
+            projectile.victims?.add(target.id);
+            if (projectile.kind === 'arrow' && !guarded && projectile.pierce > 1) projectile.pierce--;
+            else projectile.life = 0;
+          }
           if (hit && projectile.kind === 'thunder')
             events.push({ type: 'thunderimpact', p: owner.id, x: projectile.x, y: projectile.y });
           if (hit && projectile.kind === 'rod' && !guarded && target.stocks > 0) {
@@ -735,6 +781,12 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
           }
           if (hit && projectile.kind === 'mud' && !guarded && target.stocks > 0)
             target.slowTime = Math.max(target.slowTime, SLIME.slowDuration);
+          if (hit && projectile.kind === 'web' && !guarded && target.stocks > 0) {
+            target.webTime = WEB_SHOT.bindDuration;
+            target.stun = Math.max(target.stun, WEB_SHOT.bindDuration);
+            target.vx = 0;
+            events.push({ type: 'webbind', p: owner.id, to: target.id, x: target.x, y: target.y - 38 });
+          }
           if (projectile.life <= 0) break;
         }
       }
@@ -745,8 +797,20 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
   function stepPuddles(dt) {
     for (const puddle of puddles) {
       puddle.life -= dt;
+      if (puddle.life <= 0) continue;
       const owner = participants().find(p => p.id === puddle.owner);
       if (!owner) continue;
+      if (puddle.kind === 'webpad') {
+        for (const target of participants()) {
+          if (target.stocks <= 0 || target.respawn > 0 || !target.grounded ||
+              Math.abs(target.y - puddle.y) > 14 || Math.abs(target.x - puddle.x) > puddle.radius) continue;
+          target.vy = -WEB_PAD.bounce;
+          target.grounded = false; target.coyote = 0; target.drop = 0;
+          target.jumps = 1; target.recoveryUsed = false;
+          events.push({ type: 'webbounce', p: target.id, x: target.x, y: target.y });
+        }
+        continue;
+      }
       for (const target of participants()) {
         if (target.id === owner.id || !canHit(owner, target) || target.stocks <= 0 || target.respawn > 0 ||
             target.invuln > 0 || !target.grounded || Math.abs(target.y - puddle.y) > 14 ||
@@ -839,6 +903,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
         spinTime: +p.spinTime.toFixed(3), spinDir: p.spinDir, eggTime: +p.eggTime.toFixed(3),
         slowTime: +p.slowTime.toFixed(3), leviosaTime: +p.leviosaTime.toFixed(3), leviosaY: +p.leviosaY.toFixed(1),
         confuseTime: +p.confuseTime.toFixed(3), wardTime: +p.wardTime.toFixed(3), ferretTime: +p.ferretTime.toFixed(3),
+        webTime: +p.webTime.toFixed(3),
         emoteTime: +p.emoteTime.toFixed(3), emoteCooldown: +p.emoteCooldown.toFixed(3),
         invuln: +p.invuln.toFixed(2), respawn: +p.respawn.toFixed(2),
         kos: p.kos, falls: p.falls, flash: +p.flash.toFixed(2),
@@ -848,7 +913,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
         x: +p.x.toFixed(1), y: +p.y.toFixed(1),
         vx: +p.vx.toFixed(1), vy: +p.vy.toFixed(1), gravity: p.gravity,
       })),
-      puddles: puddles.map(p => ({ id: p.id, owner: p.owner, x: +p.x.toFixed(1), y: p.y,
+      puddles: puddles.map(p => ({ id: p.id, kind: p.kind || 'slime', owner: p.owner, x: +p.x.toFixed(1), y: p.y,
         radius: p.radius, life: +p.life.toFixed(2) })),
       serpents: serpents.map(p => ({ id: p.id, owner: p.owner, x: +p.x.toFixed(1), y: p.y,
         face: p.face, life: +p.life.toFixed(2) })),
