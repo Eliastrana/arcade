@@ -18,6 +18,9 @@ function interpolateActors(first, second, t) {
       eggTime: mix(actor.eggTime || 0, newer.eggTime || 0, t),
       slowTime: mix(actor.slowTime || 0, newer.slowTime || 0, t),
       leviosaTime: mix(actor.leviosaTime || 0, newer.leviosaTime || 0, t),
+      confuseTime: mix(actor.confuseTime || 0, newer.confuseTime || 0, t),
+      wardTime: mix(actor.wardTime || 0, newer.wardTime || 0, t),
+      ferretTime: mix(actor.ferretTime || 0, newer.ferretTime || 0, t),
       emoteTime: mix(actor.emoteTime || 0, newer.emoteTime || 0, t),
     }];
   }).concat(t >= 1 ? second.filter(actor => !first.some(old => old.id === actor.id)) : []);
@@ -80,6 +83,7 @@ export class BrawlTimeline {
         players: interpolateActors(older.snapshot.players, newer.snapshot.players, t),
         projectiles: interpolateActors(older.snapshot.projectiles, newer.snapshot.projectiles, t),
         puddles: newer.snapshot.puddles || [],
+        serpents: newer.snapshot.serpents || [],
       };
     }
     const latest = this.entries.at(-1).snapshot;
@@ -88,6 +92,7 @@ export class BrawlTimeline {
       players: latest.players.map(actor => extrapolate(actor, seconds)),
       projectiles: latest.projectiles.map(actor => extrapolate(actor, seconds, actor.gravity || 0)),
       puddles: latest.puddles || [],
+      serpents: latest.serpents || [],
     };
   }
 }
@@ -159,6 +164,8 @@ export class BrawlPredictor {
       auth.stocks !== this.lastAuth?.stocks || auth.percent !== this.lastAuth?.percent ||
       auth.respawn > 0 || auth.character !== this.lastAuth?.character ||
       (auth.leviosaTime > 0 && !(this.lastAuth?.leviosaTime > 0)) ||
+      (auth.confuseTime > 0 && !(this.lastAuth?.confuseTime > 0)) ||
+      (auth.ferretTime > 0 && !(this.lastAuth?.ferretTime > 0)) ||
       auth.grabbedBy !== this.lastAuth?.grabbedBy || auth.grabTarget !== this.lastAuth?.grabTarget;
     this.state = corrected;
     this.offsetX = hardCorrection ? 0 : clamp(previousX - corrected.x, -55, 55);

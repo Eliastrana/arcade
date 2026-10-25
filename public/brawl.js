@@ -538,6 +538,19 @@ function onState(s) {
     } else if (event.type === 'leviosacast') {
       spellEffects.push({ x: event.x, y: event.y, x2: event.x2, y2: event.y2, life: 0.32 });
       burst(event.x2, event.y2, '#d6e8ff', 10, 105); sound('recovery');
+    } else if (event.type === 'confundo' || event.type === 'ferrethex') {
+      const ferret = event.type === 'ferrethex';
+      spellEffects.push({ x: event.x, y: event.y, x2: event.x2, y2: event.y2,
+        color: ferret ? '#bce88b' : '#c8a9ed', life: 0.32 });
+      burst(event.x2, event.y2, ferret ? '#bce88b' : '#c8a9ed', 14, 135); sound('recovery');
+    } else if (event.type === 'ward') {
+      burst(event.x, event.y, '#a9ddff', 14, 100); sound('block');
+    } else if (event.type === 'protego') {
+      burst(event.x, event.y, '#d4f3ff', 24, 210); sound('shieldbreak');
+    } else if (event.type === 'serpent') {
+      burst(event.x, event.y, '#a9df92', 13, 115); sound('egg');
+    } else if (event.type === 'snakebite') {
+      burst(event.x, event.y, '#d5ef94', 12, 150); sound('hit', 240);
     } else if (event.type === 'puddle') {
       burst(event.x, event.y, '#a9c46d', 18, 115); sound('waft');
     } else if (event.type === 'cape') sound('cape');
@@ -577,6 +590,8 @@ function formatTime(seconds) {
 const initialCards = Object.entries(FIGHTERS).map(([key, fighter]) => {
   const button = document.createElement('button');
   button.type = 'button'; button.className = 'fighterChoice';
+  button.title = fighter.special;
+  button.setAttribute('aria-label', `${fighter.label}: ${fighter.special}`);
   const portrait = document.createElement('canvas'); portrait.width = 88; portrait.height = 105;
   const context = portrait.getContext('2d'); context.imageSmoothingEnabled = false;
   context.fillStyle = '#173b4b'; context.fillRect(0, 0, 88, 105);
@@ -857,6 +872,26 @@ function drawFighter(g, character, x, feet, scale, face, attackKind, attackTime,
     r(1, 4, 8, 5, o); r(2, 5, 7, 3, '#91c363'); r(21, 4, 8, 5, o); r(22, 5, 6, 3, '#91c363');
     r(10, 10, 3, 2, o); r(18, 10, 3, 2, o); r(13, 13, 8, 4, '#7fa94f');
     r(14, 15, 5, 2, '#5d753e');
+  } else if (character === 'snape') {
+    // Black robes, curtain-like hair, pale face and raised wand.
+    r(4, 28, 8, 5, o); r(16, 28, 8, 5, o);
+    r(3, 15, 22, 15, o); r(4, 16, 20, 13, '#303044');
+    r(9, 18, 10, 10, '#45445b'); r(11, 18, 6, 8, '#b9b4bd');
+    r(1, 18, 6, 10, '#343349'); r(attacking ? 21 : 20, attacking ? 10 : 18, 6, 8, '#d2b7a7');
+    r(4, 3, 20, 16, o); r(7, 6, 15, 12, '#d7bbad');
+    r(3, 2, 21, 7, '#202432'); r(3, 6, 5, 14, '#242835'); r(21, 5, 5, 15, '#242835');
+    r(10, 11, 3, 2, o); r(18, 11, 3, 2, o); r(16, 12, 3, 5, '#c6a697');
+    r(12, 17, 7, 2, '#705c65'); r(24, 7, 2, 18, '#8d6851');
+  } else if (character === 'draco') {
+    // Pale blond hair, Slytherin tie and dark school robe.
+    r(4, 28, 8, 5, o); r(16, 28, 8, 5, o);
+    r(4, 16, 20, 14, o); r(5, 17, 18, 12, '#303d40');
+    r(10, 18, 8, 9, '#e7e4d8'); r(13, 18, 3, 8, '#65906e');
+    r(2, 18, 6, 10, '#37464a'); r(attacking ? 21 : 20, attacking ? 10 : 18, 6, 8, '#ebd5be');
+    r(5, 5, 19, 14, o); r(7, 7, 15, 11, '#ecd8c4');
+    r(4, 2, 20, 7, '#e7d78d'); r(5, 5, 19, 3, '#d6c77f'); r(3, 7, 5, 6, '#dacd8d');
+    r(10, 11, 2, 3, o); r(18, 11, 2, 3, o); r(13, 15, 6, 2, '#957b73');
+    r(24, 8, 2, 17, '#624f46');
   }
   g.restore();
 }
@@ -1061,6 +1096,35 @@ function drawPuddle(p, now) {
   ctx.restore();
 }
 
+function drawSerpent(p, now) {
+  ctx.save(); ctx.translate(p.x, p.y); ctx.scale(p.face, 1);
+  const sway = Math.round(Math.sin(now / 110 + p.id) * 4);
+  ctx.fillStyle = '#203743';
+  ctx.fillRect(-31, -3 + sway, 22, 8); ctx.fillRect(-15, -8, 32, 11);
+  ctx.fillRect(10, -13, 18, 13); ctx.fillRect(-36, -9 + sway, 8, 9);
+  ctx.fillStyle = '#5b9c5b';
+  ctx.fillRect(-28, -2 + sway, 22, 5); ctx.fillRect(-12, -6, 30, 7);
+  ctx.fillStyle = '#80bd70'; ctx.fillRect(12, -11, 14, 9);
+  ctx.fillStyle = '#f3e3a0'; ctx.fillRect(21, -8, 3, 3);
+  ctx.fillStyle = '#e57f82'; ctx.fillRect(28, -5, 9, 2); ctx.fillRect(34, -8, 2, 3);
+  ctx.restore();
+}
+
+function drawFerret(x, y, face) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(face, 1);
+  ctx.fillStyle = '#203743';
+  ctx.fillRect(-31, -18, 40, 18); ctx.fillRect(4, -25, 23, 20);
+  ctx.fillRect(10, -30, 7, 8); ctx.fillRect(22, -29, 6, 8);
+  ctx.fillRect(-45, -15, 18, 6);
+  ctx.fillStyle = '#d9c6a8'; ctx.fillRect(-28, -16, 37, 13);
+  ctx.fillStyle = '#eee0c4'; ctx.fillRect(7, -23, 18, 16);
+  ctx.fillRect(11, -28, 4, 6); ctx.fillRect(23, -27, 3, 6);
+  ctx.fillStyle = '#9c805f'; ctx.fillRect(-42, -13, 16, 3);
+  ctx.fillRect(-24, -3, 7, 5); ctx.fillRect(0, -3, 7, 5);
+  ctx.fillStyle = '#203743'; ctx.fillRect(18, -18, 3, 3); ctx.fillRect(25, -12, 4, 3);
+  ctx.restore();
+}
+
 const mainContext = ctx;
 function drawDance(p, x, y, target) {
   const ctx = target || mainContext;
@@ -1081,6 +1145,8 @@ function drawDance(p, x, y, target) {
   else if (p.character === 'doom') { dx = beat * 3; lift = Math.abs(beat) * 3; tilt = beat * 0.12; }
   else if (p.character === 'ron') { dx = wide * 4; lift = Math.max(0, beat) * 5; tilt = wide * 0.11; }
   else if (p.character === 'shrek') { dx = wide * 2; lift = Math.max(0, beat) * 2; tilt = wide * 0.09; }
+  else if (p.character === 'snape') { dx = wide * 2; lift = Math.max(0, beat) * 2; tilt = wide * 0.06; }
+  else if (p.character === 'draco') { dx = wide * 4; lift = Math.max(0, beat) * 4; tilt = wide * 0.12; }
   ctx.save();
   ctx.translate(x + dx, y - 34 - lift);
   ctx.rotate(tilt);
@@ -1137,6 +1203,12 @@ function drawDance(p, x, y, target) {
     ctx.fillStyle = '#a6b970'; ctx.fillRect(px - 36, py - 7, 11 + Math.abs(beat) * 5, 5);
     ctx.fillRect(px + 24, py - 7, 11 + Math.abs(beat) * 5, 5);
     ctx.fillStyle = '#9bcc6c'; ctx.fillRect(px + p.face * 31 - 5, py - 65 - lift, 10, 10);
+  } else if (p.character === 'snape') {
+    ctx.fillStyle = '#baa6d7'; ctx.fillRect(px + p.face * 31 - 5, py - 77 - lift, 10, 10);
+    ctx.fillStyle = '#e1d0ee'; ctx.fillRect(px + p.face * 32 - 2, py - 81 - lift, 4, 4);
+  } else if (p.character === 'draco') {
+    ctx.fillStyle = '#a6d78b'; ctx.fillRect(px + p.face * 34 - 5, py - 67 - lift, 10, 6);
+    ctx.fillStyle = '#d9efaf'; ctx.fillRect(px + p.face * 41 - 3, py - 63 - lift, 6, 3);
   }
 }
 
@@ -1176,6 +1248,15 @@ function drawPlayer(p, lag) {
     ctx.beginPath(); ctx.ellipse(x, y - 38, 32, 47, 0, 0, Math.PI * 2); ctx.stroke();
     ctx.fillStyle = '#fff3bc'; ctx.fillRect(x - 35, y - 68, 6, 6); ctx.fillRect(x + 30, y - 26, 5, 5);
   }
+  if (p.confuseTime > 0) {
+    ctx.fillStyle = '#d9b9f0'; ctx.font = '18px "PixelText", monospace';
+    ctx.textAlign = 'center'; ctx.fillText('?', x - 24, y - 80); ctx.fillText('?', x + 25, y - 64);
+  }
+  if (p.wardTime > 0) {
+    ctx.strokeStyle = '#b6e5ff'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.ellipse(x, y - 37, 34, 47, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#e5f7ff'; ctx.fillRect(x - 6, y - 80, 12, 4);
+  }
   if (p.stun > 0.08) {
     ctx.fillStyle = character.color + '77';
     ctx.fillRect(x - p.vx * 0.035 - 15, y - 60 - p.vy * 0.02, 30, 53);
@@ -1186,7 +1267,7 @@ function drawPlayer(p, lag) {
   }
   const localShield = p.id === myId && combatFeatures &&
     (keys.has('shift') || keys.has('touchshield')) && p.grounded &&
-    p.stun <= 0 && !p.attack && !p.rollTime && p.shield > 0 && p.shieldBreak <= 0;
+    p.stun <= 0 && !p.attack && !p.rollTime && !p.ferretTime && p.shield > 0 && p.shieldBreak <= 0;
   if (p.shielding || localShield) {
     ctx.fillStyle = p.shield < 30 ? '#ffdb954d' : '#a8e9ff45';
     ctx.beginPath(); ctx.ellipse(x, y - 37, 39, 49, 0, 0, Math.PI * 2); ctx.fill();
@@ -1204,6 +1285,8 @@ function drawPlayer(p, lag) {
     ctx.fillStyle = '#9fce78';
     for (const [dx, dy] of [[-9, -43], [8, -40], [0, -28], [-13, -20], [12, -22]])
       ctx.fillRect(x + dx - 3, y + dy - 3, 7, 7);
+  } else if (p.ferretTime > 0) {
+    drawFerret(x, y, p.face);
   } else if (p.rollTime > 0 || p.spinTime > 0) {
     const progress = 1 - p.rollTime / BRAWL_ROLL.duration;
     if (p.rollTime > 0) {
@@ -1297,6 +1380,14 @@ function drawPlayer(p, lag) {
     ctx.strokeStyle = '#e7d7b6'; ctx.lineWidth = 4;
     ctx.beginPath(); ctx.moveTo(x + p.face * 17, y - 47); ctx.lineTo(x + p.face * 45, y - 75); ctx.stroke();
     ctx.fillStyle = '#e2efff'; ctx.fillRect(x + p.face * 45 - 5, y - 81, 10, 10);
+  }
+  if (p.attack && (p.character === 'snape' || p.character === 'draco')) {
+    ctx.strokeStyle = p.character === 'snape' ? '#b4a6d7' : '#c4e2a3';
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(x + p.face * 18, y - 46);
+    ctx.lineTo(x + p.face * 46, y - 72); ctx.stroke();
+    ctx.fillStyle = p.character === 'snape' ? '#d8c1f2' : '#deefae';
+    ctx.fillRect(x + p.face * 46 - 3, y - 76, 6, 6);
   }
   if (p.grabTarget) {
     ctx.strokeStyle = '#ffe0a1'; ctx.lineWidth = 5;
@@ -1768,6 +1859,7 @@ function render(now) {
     const buffered = timeline.sample(now) || state;
     const local = state.phase === 'playing' ? predictor.visual(dt) : null;
     for (const p of buffered.puddles || []) drawPuddle(p, now);
+    for (const p of buffered.serpents || []) drawSerpent(p, now);
     for (const p of buffered.projectiles) drawProjectile(p, 0, now, buffered.players);
     for (const p of buffered.players) {
       if (!p.hookedBy || p.hookTime <= 0) continue;
@@ -1802,7 +1894,7 @@ function render(now) {
     }
     for (const effect of spellEffects) {
       ctx.globalAlpha = Math.max(0, effect.life / 0.32);
-      ctx.strokeStyle = '#b7d8ff'; ctx.lineWidth = 6;
+      ctx.strokeStyle = effect.color || '#b7d8ff'; ctx.lineWidth = 6;
       ctx.beginPath(); ctx.moveTo(effect.x, effect.y); ctx.lineTo(effect.x2, effect.y2); ctx.stroke();
       ctx.strokeStyle = '#fff4d5'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(effect.x, effect.y); ctx.lineTo(effect.x2, effect.y2); ctx.stroke();

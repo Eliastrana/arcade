@@ -1,4 +1,4 @@
-import { BRAWL, BRAWL_WORLDS, BRAWL_TEAMS, BRAWL_EMOTE, BRAWL_EMOTE_LINES, FIGHTERS, ATTACKS, CAPE, EGG_LAY, ATTACK_LAG, CHAIN, STALE, SPECIAL2, THUNDER, DIN_FIRE, MIC_WAVE, LEVIOSA, SLIME, eggLayDuration, isBrawlRollInvulnerable, makeFighter, knockback, launchBrawlVelocity, waftBrawlAttack, throwBrawlVelocity, resetFighter, isOut, jumpBrawlFighter, recoverBrawlFighter, stepBrawlMovement } from '../shared/brawl.js';
+import { BRAWL, BRAWL_WORLDS, BRAWL_TEAMS, BRAWL_EMOTE, BRAWL_EMOTE_LINES, FIGHTERS, ATTACKS, CAPE, EGG_LAY, ATTACK_LAG, CHAIN, STALE, SPECIAL2, THUNDER, DIN_FIRE, MIC_WAVE, LEVIOSA, SLIME, CONFUNDO, PROTEGO, SERPENT, FERRET, eggLayDuration, isBrawlRollInvulnerable, makeFighter, knockback, launchBrawlVelocity, waftBrawlAttack, throwBrawlVelocity, resetFighter, isOut, jumpBrawlFighter, recoverBrawlFighter, stepBrawlMovement } from '../shared/brawl.js';
 
 const MAX_PLAYERS = 4;
 const RESULTS_SECONDS = 7;
@@ -12,6 +12,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
   let nextId = 1;
   let nextProjectile = 1;
   let nextPuddle = 1;
+  let nextSerpent = 1;
   let frame = 0;
   let phase = 'lobby';
   let countdown = 0;
@@ -25,6 +26,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
   let world = 'dolomittene';
   let projectiles = [];
   let puddles = [];
+  let serpents = [];
   let events = [];
 
   const participants = () => [...clients.values()].filter(p => !p.spectator);
@@ -64,7 +66,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
     if (clients.size) return;
     openLobby(); elapsed = 0;
     mode = 'ffa'; friendlyFire = false;
-    projectiles = []; puddles = []; events = [];
+    projectiles = []; puddles = []; serpents = []; events = [];
     onEmpty?.();
   }
 
@@ -89,7 +91,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
     phase = 'countdown'; countdown = 3.2; winner = null; winnerTeam = null; elapsed = 0;
     world = chooseWorld(ready);
     lastActivityAt = Date.now();
-    projectiles = []; puddles = [];
+    projectiles = []; puddles = []; serpents = [];
     const teamSlots = { red: [0, 2], blue: [1, 3] };
     ready.forEach((p, slot) => resetFighter(p, mode === 'teams' ? teamSlots[p.team].shift() : slot));
     events.push({ type: 'countdown' });
@@ -190,7 +192,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
   }
 
   function emote(p) {
-    if (p.stocks <= 0 || p.respawn > 0 || !p.grounded || p.stun > 0 || p.leviosaTime > 0 || p.attack ||
+    if (p.stocks <= 0 || p.respawn > 0 || !p.grounded || p.stun > 0 || p.leviosaTime > 0 || p.ferretTime > 0 || p.attack ||
         p.shielding || p.input.shield || p.rollTime > 0 || p.grabTarget || p.grabbedBy ||
         p.eggTime > 0 || p.hookTime > 0 || p.emoteCooldown > 0 ||
         (Date.now() - p.input.lastAt < 250 && p.input.move)) return;
@@ -208,7 +210,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
   }
 
   function attack(p, kind) {
-    if (p.stocks <= 0 || p.respawn > 0 || p.stun > 0 || p.leviosaTime > 0 || p.attack || p.attackLag > 0 || p.shielding || p.rollTime > 0 || p.input.shield || p.grabTarget || p.grabbedBy) return;
+    if (p.stocks <= 0 || p.respawn > 0 || p.stun > 0 || p.leviosaTime > 0 || p.ferretTime > 0 || p.attack || p.attackLag > 0 || p.shielding || p.rollTime > 0 || p.input.shield || p.grabTarget || p.grabbedBy) return;
     if (kind === 'upair') {
       if (!recoverBrawlFighter(p, p.input.move)) return;
       events.push({ type: 'recovery', p: p.id, x: p.x, y: p.y });
@@ -216,7 +218,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
     p.attack = kind; p.attackTime = 0; p.attackHit = false; p.attackVictims = new Set();
     p.recentAttacks = [...p.recentAttacks.filter(a => elapsed - a.at <= STALE.window), { kind, at: elapsed }];
     p.emoteTime = 0;
-    if (p.input.move) p.face = p.input.move;
+    if (p.input.move) p.face = p.input.move * (p.confuseTime > 0 ? -1 : 1);
     events.push({ type: 'swing', p: p.id, kind, x: p.x, y: p.y });
   }
 
@@ -276,6 +278,13 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
 
   function damage(attacker, target, move, x, y, direction) {
     if (!canHit(attacker, target) || target.stocks <= 0 || target.respawn > 0 || target.invuln > 0 || isBrawlRollInvulnerable(target) || target.grabbedBy) return false;
+    if (target.wardTime > 0 && !move.counter) {
+      target.wardTime = 0;
+      events.push({ type: 'protego', p: target.id, from: attacker.id, x: target.x, y: target.y - 38 });
+      if (Math.hypot(attacker.x - target.x, attacker.y - target.y) <= PROTEGO.counterRadius)
+        damage(target, attacker, PROTEGO.counter, attacker.x, attacker.y - 38, Math.sign(attacker.x - target.x) || target.face);
+      return true;
+    }
     if (target.grabTarget) releaseGrab(target);
     target.throwBounce = 0;
     target.hookedBy = null; target.hookTime = 0;
@@ -319,7 +328,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
     if (p.spectator || p.stocks <= 0 || p.respawn > 0) { p.shielding = false; return; }
     p.shieldBreak = Math.max(0, p.shieldBreak - dt);
     p.shieldRegenDelay = Math.max(0, p.shieldRegenDelay - dt);
-    p.shielding = !p.rollTime && !p.grabTarget && !p.grabbedBy && !p.leviosaTime && !!p.input.shield && Date.now() - p.input.lastAt < 300 &&
+    p.shielding = !p.rollTime && !p.grabTarget && !p.grabbedBy && !p.leviosaTime && !p.ferretTime && !!p.input.shield && Date.now() - p.input.lastAt < 300 &&
       p.grounded && p.shield > 0 && p.shieldBreak <= 0 && p.stun <= 0 && !p.attack;
     if (p.shielding) {
       p.shield = Math.max(0, p.shield - 18 * dt);
@@ -376,6 +385,50 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
     events.push({ type: 'leviosa', p: p.id, to: target.id, x: target.x, y: target.y - 38 });
   }
 
+  function spellTarget(p, spell) {
+    return participants().filter(other => other.id !== p.id && canHit(p, other) &&
+      (other.x - p.x) * p.face >= -8 && (other.x - p.x) * p.face <= spell.range &&
+      Math.abs(other.y - p.y) <= spell.height && other.stocks > 0 && other.respawn <= 0 &&
+      other.invuln <= 0 && !isBrawlRollInvulnerable(other) && !other.grabbedBy)
+      .sort((a, b) => Math.abs(a.x - p.x) - Math.abs(b.x - p.x))[0];
+  }
+
+  function castConfundo(p) {
+    const target = spellTarget(p, CONFUNDO);
+    events.push({ type: 'confundo', p: p.id, x: p.x + p.face * 22, y: p.y - 57,
+      x2: target?.x ?? p.x + p.face * CONFUNDO.range, y2: target ? target.y - 38 : p.y - 57 });
+    if (!target) return;
+    const guarded = target.shielding || target.wardTime > 0;
+    if (!damage(p, target, CONFUNDO, target.x, target.y - 38, p.face) || guarded) return;
+    target.confuseTime = CONFUNDO.duration;
+    p.attackVictims?.add(target.id);
+  }
+
+  function castFerret(p) {
+    const target = spellTarget(p, FERRET);
+    events.push({ type: 'ferrethex', p: p.id, x: p.x + p.face * 22, y: p.y - 57,
+      x2: target?.x ?? p.x + p.face * FERRET.range, y2: target ? target.y - 38 : p.y - 57 });
+    if (!target) return;
+    const guarded = target.shielding || target.wardTime > 0;
+    if (!damage(p, target, FERRET, target.x, target.y - 38, p.face) || guarded) return;
+    target.ferretTime = FERRET.duration;
+    target.shielding = false;
+    p.attackVictims?.add(target.id);
+  }
+
+  function summonSerpent(p) {
+    const index = p.grounded && p.groundIndex >= 0 ? p.groundIndex :
+      BRAWL.platforms.map((platform, i) => ({ ...platform, i }))
+        .filter(platform => p.x >= platform.x - 12 && p.x <= platform.x + platform.w + 12 &&
+          platform.y >= p.y - 3)
+        .sort((a, b) => a.y - b.y)[0]?.i ?? 0;
+    const platform = BRAWL.platforms[index];
+    const x = LIMIT(p.x + p.face * 40, platform.x + 18, platform.x + platform.w - 18);
+    serpents.push({ id: nextSerpent++, owner: p.id, platformIndex: index, x, y: platform.y - 10,
+      face: p.face, life: SERPENT.duration });
+    events.push({ type: 'serpent', p: p.id, x, y: platform.y - 10 });
+  }
+
   function createPuddle(p) {
     const support = BRAWL.platforms.filter(platform => p.x >= platform.x - 12 &&
       p.x <= platform.x + platform.w + 12 && platform.y >= p.y - 3)
@@ -405,6 +458,11 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
       castLeviosa(p);
     } else if (s.puddle) {
       createPuddle(p);
+    } else if (s.protego) {
+      p.wardTime = PROTEGO.duration;
+      events.push({ type: 'ward', p: p.id, x: p.x, y: p.y - 38 });
+    } else if (s.ferret) {
+      castFerret(p);
     } else if (s.farore) {
       // Teleport sideways (the way she is pushing, else the way she faces). In the air it works once until she lands.
       if (!p.grounded && p.tpUsed) return;
@@ -509,6 +567,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
     p.emoteCooldown = Math.max(0, p.emoteCooldown - dt);
     p.attackLag = Math.max(0, p.attackLag - dt);
     p.spinTime = Math.max(0, p.spinTime - dt);
+    p.wardTime = Math.max(0, p.wardTime - dt);
     if (p.eggTime > 0) {
       p.eggTime = Math.max(0, p.eggTime - dt);
       if (!p.eggTime && p.respawn <= 0) events.push({ type: 'eggpop', p: p.id, x: p.x, y: p.y - 38 });
@@ -524,6 +583,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
         p.hookedBy = null; p.hookTime = 0;
         p.spinTime = 0; p.spinDir = 0; p.eggTime = 0;
         p.slowTime = 0; p.leviosaTime = 0; p.leviosaY = 0;
+        p.confuseTime = 0; p.wardTime = 0; p.ferretTime = 0;
         p.emoteTime = 0; p.emoteCooldown = 0;
         p.grounded = false; p.lastHitBy = null; p.lastHitAt = -Infinity; p.rush = null; p.tpUsed = false;
         events.push({ type: 'respawn', p: p.id });
@@ -567,6 +627,8 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
         else if (p.character === 'yoshi') layEgg(p);
         else if (p.character === 'pikachu') summonThunder(p);
         else if (p.character === 'doom') shockwaveMic(p);
+        else if (p.character === 'snape') castConfundo(p);
+        else if (p.character === 'draco') summonSerpent(p);
         else spawnProjectile(p);
       }
       if (kind === 'special2' && !p.attackHit && p.attackTime >= moveData.startup) {
@@ -607,6 +669,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
       p.hookedBy = null; p.hookTime = 0;
       p.spinTime = 0; p.spinDir = 0; p.eggTime = 0;
       p.slowTime = 0; p.leviosaTime = 0; p.leviosaY = 0;
+      p.confuseTime = 0; p.wardTime = 0; p.ferretTime = 0;
       p.emoteTime = 0;
       p.shielding = false; p.recoveryUsed = false; p.rollTime = 0; p.rollInput = 0;
       p.x = LIMIT(p.x, 0, BRAWL.width); p.y = -100;
@@ -694,6 +757,36 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
     puddles = puddles.filter(p => p.life > 0);
   }
 
+  function stepSerpents(dt) {
+    for (const serpent of serpents) {
+      serpent.life -= dt;
+      const owner = participants().find(p => p.id === serpent.owner && p.stocks > 0);
+      if (!owner || serpent.life <= 0) { serpent.life = 0; continue; }
+      const platform = BRAWL.platforms[serpent.platformIndex];
+      const targets = participants().filter(target => target.id !== owner.id && canHit(owner, target) &&
+        target.stocks > 0 && target.respawn <= 0 && target.grounded && target.groundIndex === serpent.platformIndex);
+      const prey = targets.filter(target => Math.abs(target.x - serpent.x) <= SERPENT.seekRange)
+        .sort((a, b) => Math.abs(a.x - serpent.x) - Math.abs(b.x - serpent.x))[0];
+      if (prey) serpent.face = Math.sign(prey.x - serpent.x) || serpent.face;
+      serpent.x = LIMIT(serpent.x + serpent.face * SERPENT.speed * dt,
+        platform.x + 14, platform.x + platform.w - 14);
+      if (serpent.x === platform.x + 14 || serpent.x === platform.x + platform.w - 14) serpent.face *= -1;
+      for (const target of targets) {
+        if (Math.abs(target.x - serpent.x) > SERPENT.biteRange) continue;
+        const guarded = target.shielding || target.wardTime > 0;
+        if (!damage(owner, target, SERPENT.bite, target.x, target.y - 34, serpent.face)) continue;
+        serpent.life = 0;
+        if (!guarded) {
+          target.vx *= 0.25;
+          target.stun = Math.max(target.stun, 0.65);
+        }
+        events.push({ type: 'snakebite', p: owner.id, to: target.id, x: target.x, y: target.y - 32 });
+        break;
+      }
+    }
+    serpents = serpents.filter(serpent => serpent.life > 0);
+  }
+
   function tick() {
     frame++;
     if (phase === 'countdown') {
@@ -719,6 +812,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
       }
       stepProjectiles(BRAWL.tick);
       stepPuddles(BRAWL.tick);
+      stepSerpents(BRAWL.tick);
       finish();
       if (Date.now() - lastActivityAt > IDLE_MATCH_MS) finish(true);
     } else if (phase === 'results') {
@@ -744,6 +838,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
         hookedBy: p.hookedBy, hookTime: +p.hookTime.toFixed(2), waftCharge: +p.waftCharge.toFixed(3),
         spinTime: +p.spinTime.toFixed(3), spinDir: p.spinDir, eggTime: +p.eggTime.toFixed(3),
         slowTime: +p.slowTime.toFixed(3), leviosaTime: +p.leviosaTime.toFixed(3), leviosaY: +p.leviosaY.toFixed(1),
+        confuseTime: +p.confuseTime.toFixed(3), wardTime: +p.wardTime.toFixed(3), ferretTime: +p.ferretTime.toFixed(3),
         emoteTime: +p.emoteTime.toFixed(3), emoteCooldown: +p.emoteCooldown.toFixed(3),
         invuln: +p.invuln.toFixed(2), respawn: +p.respawn.toFixed(2),
         kos: p.kos, falls: p.falls, flash: +p.flash.toFixed(2),
@@ -755,6 +850,8 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
       })),
       puddles: puddles.map(p => ({ id: p.id, owner: p.owner, x: +p.x.toFixed(1), y: p.y,
         radius: p.radius, life: +p.life.toFixed(2) })),
+      serpents: serpents.map(p => ({ id: p.id, owner: p.owner, x: +p.x.toFixed(1), y: p.y,
+        face: p.face, life: +p.life.toFixed(2) })),
       events,
     });
     events = [];

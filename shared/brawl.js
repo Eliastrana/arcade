@@ -29,6 +29,8 @@ export const FIGHTERS = Object.freeze({
   doom: { label: 'MF DOOM', color: '#8b9a8e', accent: '#d8bd78', speed: 288, weight: 0.98, jump: 605, air: 1.04, special: 'Mikrofonbølge · vinylplate', recovery: 820, recoveryDrift: 300 },
   ron: { label: 'Ron Weasley', color: '#cc7649', accent: '#e7d7b6', speed: 280, weight: 0.96, jump: 595, air: 1.03, special: 'Sjakkbrikker · Leviosa', recovery: 825, recoveryDrift: 295 },
   shrek: { label: 'Shrek', color: '#86b653', accent: '#e9d7a6', speed: 260, weight: 1.16, jump: 565, air: 0.91, special: 'Stor slimball · sumpdam', recovery: 745, recoveryDrift: 255 },
+  snape: { label: 'Snape', color: '#343a4d', accent: '#b4a6d7', speed: 274, weight: 0.97, jump: 590, air: 1.02, special: 'Confundo · Protego-motstøt', recovery: 815, recoveryDrift: 285 },
+  draco: { label: 'Draco', color: '#7d997f', accent: '#d6e1b0', speed: 292, weight: 0.94, jump: 602, air: 1.05, special: 'Serpensortia · ilderforhekselse', recovery: 835, recoveryDrift: 305 },
 });
 
 export const DIN_FIRE = Object.freeze({ radius: 62, damage: 10, base: 175, growth: 525, angle: 73 });
@@ -41,6 +43,14 @@ export const LEVIOSA = Object.freeze({ duration: 2, range: 230, height: 95, rise
   base: 0, growth: 0, angle: 90, staleKind: 'special2' });
 export const SLIME = Object.freeze({ projectileRadius: 45, slowDuration: 2.5, slowFactor: 0.46,
   puddleRadius: 105, puddleDuration: 4, puddleSlowDuration: 0.32 });
+export const CONFUNDO = Object.freeze({ range: 205, height: 95, duration: 2.4, damage: 3,
+  base: 0, growth: 0, angle: 90, staleKind: 'special' });
+export const PROTEGO = Object.freeze({ duration: 1.3, counterRadius: 160,
+  counter: Object.freeze({ damage: 7, base: 155, growth: 420, angle: 62, staleKind: 'special2', counter: true }) });
+export const SERPENT = Object.freeze({ duration: 3.2, speed: 170, seekRange: 285, biteRange: 30,
+  bite: Object.freeze({ damage: 6, base: 115, growth: 350, angle: 48, staleKind: 'special' }) });
+export const FERRET = Object.freeze({ range: 205, height: 95, duration: 2, speedFactor: 1.25,
+  damage: 2, base: 0, growth: 0, angle: 90, staleKind: 'special2' });
 export const BRAWL_ROLL = Object.freeze({ duration: 0.34, cooldown: 0.8, speed: 440,
   invulnStart: 0.05, invulnEnd: 0.25, shieldCost: 8 });
 export const BRAWL_EMOTE = Object.freeze({ duration: 1.8, cooldown: 2.4 });
@@ -55,6 +65,8 @@ export const BRAWL_EMOTE_LINES = Object.freeze({
   doom: { text: 'All caps when you spell the man name.', speech: 'All caps when you spell the man name.', lang: 'en-US', pitch: 0.7, rate: 0.92 },
   ron: { text: 'Bloody hell!', speech: 'Bloody hell!', lang: 'en-GB', pitch: 1.15, rate: 1.05 },
   shrek: { text: 'Ut av sumpen min!', speech: 'Ut av sumpen min!', pitch: 0.68, rate: 0.88 },
+  snape: { text: 'Always.', speech: 'Always.', lang: 'en-GB', pitch: 0.68, rate: 0.8 },
+  draco: { text: 'My father will hear about this!', speech: 'My father will hear about this!', lang: 'en-GB', pitch: 1.22, rate: 1.08 },
 });
 
 // startup = delay before the hit comes out, active = how long it can hit, total = until the fighter can act again.
@@ -82,6 +94,7 @@ export const ATTACK_LAG = Object.freeze({ jab: 0.10, smash: 0.22, grab: 0.28, sp
 //   Wario     a heavy shoulder charge             Zelda     teleports a short way (once in the air until she lands)
 //   Marx      a train dash                         DOOM      a flying record
 //   Ron       Leviosa for two seconds              Shrek     a slowing swamp puddle
+//   Snape     a one-hit Protego counter             Draco     turns a rival into a ferret
 // "rush" moves carry the fighter forward for `time` seconds and hit each opponent they touch once.
 export const SPECIAL2 = Object.freeze({
   mario: { fireball: { speed: 430, gravity: 1100, bounce: 3, life: 1.7, damage: 5, base: 105, growth: 330, angle: 45 } },
@@ -94,6 +107,8 @@ export const SPECIAL2 = Object.freeze({
   doom: { projectile: { kind: 'record', speed: 710, life: 0.95, damage: 6, base: 125, growth: 360, angle: 50 } },
   ron: { leviosa: LEVIOSA },
   shrek: { puddle: SLIME },
+  snape: { protego: PROTEGO },
+  draco: { ferret: FERRET },
 });
 
 export const CHAIN = Object.freeze({ window: 1.6, step: 0.08, max: 0.42 });
@@ -117,6 +132,7 @@ export function makeFighter(id, name, character, slot) {
     grabTarget: null, grabbedBy: null, grabTimer: 0, throwBounce: 0,
     hookedBy: null, hookTime: 0, waftCharge: 0,
     spinTime: 0, spinDir: 0, eggTime: 0, slowTime: 0, leviosaTime: 0, leviosaY: 0,
+    confuseTime: 0, wardTime: 0, ferretTime: 0,
     emoteTime: 0, emoteCooldown: 0,
     stun: 0, invuln: 2.3, respawn: 0, ready: false,
     kos: 0, falls: 0, flash: 0,
@@ -187,6 +203,7 @@ export function resetFighter(p, slot = p.slot) {
   p.grabTarget = null; p.grabbedBy = null; p.grabTimer = 0; p.throwBounce = 0;
   p.hookedBy = null; p.hookTime = 0; p.waftCharge = 0;
   p.spinTime = 0; p.spinDir = 0; p.eggTime = 0; p.slowTime = 0; p.leviosaTime = 0; p.leviosaY = 0;
+  p.confuseTime = 0; p.wardTime = 0; p.ferretTime = 0;
   p.emoteTime = 0; p.emoteCooldown = 0;
   p.stun = 0; p.invuln = 0; p.respawn = 0; p.kos = 0; p.falls = 0; p.flash = 0;
 }
@@ -213,7 +230,7 @@ export function jumpBrawlFighter(p, down = false) {
 }
 
 export function recoverBrawlFighter(p, move = 0) {
-  if (p.stocks <= 0 || p.respawn > 0 || p.stun > 0 || p.shielding || p.rollTime > 0 || p.grabTarget || p.grabbedBy || p.leviosaTime > 0 || p.recoveryUsed || p.attack) return false;
+  if (p.stocks <= 0 || p.respawn > 0 || p.stun > 0 || p.shielding || p.rollTime > 0 || p.grabTarget || p.grabbedBy || p.leviosaTime > 0 || p.ferretTime > 0 || p.recoveryUsed || p.attack) return false;
   const stats = FIGHTERS[p.character];
   p.recoveryUsed = true;
   p.grounded = false; p.coyote = 0; p.drop = 0;
@@ -224,6 +241,10 @@ export function recoverBrawlFighter(p, move = 0) {
 
 export function stepBrawlMovement(p, move, dt, shieldInput = false) {
   p.slowTime = Math.max(0, (p.slowTime || 0) - dt);
+  const confused = (p.confuseTime || 0) > 0;
+  p.confuseTime = Math.max(0, (p.confuseTime || 0) - dt);
+  p.ferretTime = Math.max(0, (p.ferretTime || 0) - dt);
+  move = confused ? -move : move;
   const levitating = (p.leviosaTime || 0) > 0;
   p.leviosaTime = Math.max(0, (p.leviosaTime || 0) - dt);
   p.stun = Math.max(0, p.stun - dt);
@@ -242,7 +263,7 @@ export function stepBrawlMovement(p, move, dt, shieldInput = false) {
   const rollEdge = chord && p.rollInput !== chord;
   p.rollInput = chord;
   if (rollEdge && !p.rollTime && !p.rollCooldown && p.grounded && p.shield > BRAWL_ROLL.shieldCost &&
-      p.shieldBreak <= 0 && p.stun <= 0 && !p.attack && !p.grabTarget && !p.grabbedBy &&
+      p.shieldBreak <= 0 && p.stun <= 0 && !p.attack && !p.ferretTime && !p.grabTarget && !p.grabbedBy &&
       p.stocks > 0 && p.respawn <= 0) {
     p.rollTime = BRAWL_ROLL.duration;
     p.rollCooldown = BRAWL_ROLL.cooldown;
@@ -258,7 +279,8 @@ export function stepBrawlMovement(p, move, dt, shieldInput = false) {
     const walking = shieldInput || p.shielding ? 0 : move;
     if (walking) {
       p.face = walking;
-      const target = walking * stats.speed * (p.slowTime > 0 ? SLIME.slowFactor : 1);
+      const target = walking * stats.speed * (p.slowTime > 0 ? SLIME.slowFactor : 1) *
+        (p.ferretTime > 0 ? FERRET.speedFactor : 1);
       const change = (p.grounded ? 3400 : 1650 * stats.air) * dt;
       p.vx = p.vx < target ? Math.min(p.vx + change, target) : Math.max(p.vx - change, target);
     } else if (p.grounded) p.vx *= 0.76;
