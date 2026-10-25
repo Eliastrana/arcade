@@ -364,7 +364,7 @@ function speakEmote(event) {
   try {
     stopEmoteSpeech(); // Don't queue stale lines when several fighters dance together.
     const utterance = new SpeechSynthesisUtterance(line.speech);
-    utterance.lang = 'nb-NO';
+    utterance.lang = line.lang || 'nb-NO';
     utterance.pitch = line.pitch;
     utterance.rate = line.rate;
     utterance.volume = 0.85;
@@ -809,6 +809,45 @@ function drawFighter(g, character, x, feet, scale, face, attackKind, attackTime,
     r(8, 5, 13, 4, '#efd67c'); r(10, 7, 7, 2, '#e8c970');
     r(8, 2, 14, 4, '#edcd69'); r(13, 0, 5, 5, '#f3d988');
     r(14, 2, 3, 3, '#a967c5');
+  } else if (character === 'marx') {
+    // Dark coat, white beard and a small red book.
+    r(4, 28, 8, 5, o); r(5, 29, 7, 3, '#493c3c'); r(16, 28, 8, 5, o); r(17, 29, 6, 3, '#493c3c');
+    r(4, 16, 20, 14, o); r(5, 17, 18, 12, '#5d4545'); r(11, 17, 6, 10, '#e6dbc4');
+    r(3, 18, 5, 10, '#53413e'); r(attacking ? 21 : 20, attacking ? 11 : 18, 6, 9, '#d6ad86');
+    r(4, 3, 20, 16, o); r(6, 5, 16, 12, '#d7ae8b');
+    r(4, 2, 20, 7, '#39383b'); r(3, 6, 5, 8, '#39383b'); r(21, 6, 4, 8, '#39383b');
+    r(8, 12, 15, 9, '#e8e4d8'); r(10, 15, 11, 6, '#faf1d9');
+    r(10, 10, 3, 2, o); r(18, 10, 3, 2, o); r(13, 13, 6, 2, '#44383a');
+    r(1, 19, 6, 8, '#a73f45'); r(2, 20, 4, 6, '#d57d72');
+  } else if (character === 'doom') {
+    // Green hood and angular metal mask.
+    r(4, 28, 8, 5, o); r(5, 29, 7, 3, '#596c61'); r(16, 28, 8, 5, o); r(17, 29, 6, 3, '#596c61');
+    r(4, 15, 20, 15, o); r(5, 16, 18, 13, '#53715d'); r(10, 18, 8, 8, '#809184');
+    r(2, 18, 5, 8, '#597462'); r(attacking ? 22 : 20, attacking ? 11 : 17, 6, 10, '#819080');
+    r(5, 2, 19, 17, o); r(6, 3, 17, 16, '#4d6858');
+    r(8, 5, 14, 13, '#aab2a8'); r(9, 9, 12, 7, '#738077');
+    r(9, 8, 5, 3, o); r(17, 8, 5, 3, o); r(12, 12, 7, 4, '#c2c6b6');
+    r(13, 14, 2, 3, o); r(17, 14, 2, 3, o); r(4, 2, 7, 5, '#5f7a62');
+    r(23, 17, 2, 8, '#d8bd78'); r(21, 15, 6, 4, '#c4c5b5');
+  } else if (character === 'ron') {
+    // Ginger hair, school robe, tie and wand.
+    r(4, 28, 8, 5, o); r(5, 29, 7, 3, '#403b42'); r(16, 28, 8, 5, o); r(17, 29, 6, 3, '#403b42');
+    r(4, 16, 20, 14, o); r(5, 17, 18, 12, '#403d4f'); r(10, 17, 8, 10, '#e8dcca');
+    r(13, 18, 3, 7, '#ae5949'); r(3, 18, 5, 9, '#464253');
+    r(attacking ? 21 : 20, attacking ? 10 : 18, 6, 8, '#edc4a0');
+    r(6, 5, 17, 13, o); r(7, 6, 15, 11, '#ecc6a4');
+    r(4, 2, 20, 7, '#ba653d'); r(3, 6, 5, 6, '#ba653d'); r(20, 5, 5, 6, '#ba653d');
+    r(10, 10, 2, 3, o); r(18, 10, 2, 3, o); r(13, 14, 5, 2, '#9d7767');
+    r(24, 9, 2, 15, '#644630');
+  } else if (character === 'shrek') {
+    // Broad ogre with tube ears, cream shirt and brown vest.
+    r(2, 27, 10, 6, o); r(3, 28, 9, 4, '#654c39'); r(15, 27, 10, 6, o); r(16, 28, 8, 4, '#654c39');
+    r(2, 15, 23, 15, o); r(3, 16, 21, 13, '#806145'); r(8, 16, 11, 11, '#e5d4a9');
+    r(3, 18, 4, 8, '#85af51'); r(attacking ? 22 : 21, attacking ? 10 : 18, 6, 9, '#87b552');
+    r(5, 4, 19, 15, o); r(6, 5, 17, 13, '#89bb5b');
+    r(1, 4, 8, 5, o); r(2, 5, 7, 3, '#91c363'); r(21, 4, 8, 5, o); r(22, 5, 6, 3, '#91c363');
+    r(10, 10, 3, 2, o); r(18, 10, 3, 2, o); r(13, 13, 8, 4, '#7fa94f');
+    r(14, 15, 5, 2, '#5d753e');
   }
   g.restore();
 }
@@ -941,6 +980,45 @@ function drawProjectile(p, lag, now, players) {
     ctx.restore();
     return;
   }
+  if (['pamphlet', 'mic', 'knight', 'rook', 'mud', 'record'].includes(p.kind)) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(direction, 1);
+    if (p.kind === 'pamphlet') {
+      ctx.rotate((frame - 1.5) * 0.18);
+      ctx.fillStyle = '#203743'; ctx.fillRect(-11, -9, 22, 18);
+      ctx.fillStyle = '#bd4d4b'; ctx.fillRect(-9, -7, 18, 14);
+      ctx.fillStyle = '#f5dcad'; ctx.fillRect(-6, -4, 12, 2); ctx.fillRect(-6, 1, 9, 2);
+    } else if (p.kind === 'mic') {
+      ctx.fillStyle = '#35454a'; ctx.fillRect(-7, -9, 15, 15);
+      ctx.fillStyle = '#bec7bd'; ctx.fillRect(-5, -7, 11, 10);
+      ctx.fillStyle = '#35454a'; ctx.fillRect(7, 3, 11, 4);
+      ctx.fillStyle = '#d8bd78'; ctx.fillRect(-2, -5, 5, 2);
+    } else if (p.kind === 'record') {
+      ctx.fillStyle = '#d8bd78'; ctx.fillRect(-17, -12, 34, 24);
+      ctx.fillStyle = '#303a3d'; ctx.fillRect(-14, -10, 28, 20);
+      ctx.fillStyle = '#8f9b8d'; ctx.fillRect(-4, -5, 8, 10);
+      ctx.fillStyle = '#d8bd78'; ctx.fillRect(-1, -2, 2, 4);
+    } else if (p.kind === 'knight' || p.kind === 'rook') {
+      ctx.fillStyle = '#203743'; ctx.fillRect(-11, 6, 22, 5);
+      ctx.fillStyle = '#f3e8cf'; ctx.fillRect(-9, 7, 18, 3);
+      if (p.kind === 'rook') {
+        ctx.fillStyle = '#f3e8cf'; ctx.fillRect(-7, -8, 14, 15);
+        ctx.fillRect(-10, -11, 5, 5); ctx.fillRect(-2, -11, 5, 5); ctx.fillRect(5, -11, 5, 5);
+        ctx.fillStyle = '#9a8069'; ctx.fillRect(-2, -3, 4, 6);
+      } else {
+        ctx.fillStyle = '#f3e8cf'; ctx.fillRect(-7, -3, 12, 10);
+        ctx.fillRect(-5, -10, 7, 9); ctx.fillRect(0, -8, 7, 4);
+        ctx.fillStyle = '#203743'; ctx.fillRect(-2, -7, 2, 2);
+      }
+    } else {
+      ctx.fillStyle = '#486849'; ctx.fillRect(-12, -8, 24, 17);
+      ctx.fillStyle = '#758a51'; ctx.fillRect(-9, -10, 17, 15);
+      ctx.fillStyle = '#a5aa6b'; ctx.fillRect(-5, -7, 8, 4);
+    }
+    ctx.restore();
+    return;
+  }
   if (p.character === 'isabelle') {
     const owner = players.find(player => player.id === p.owner);
     if (owner) {
@@ -983,6 +1061,10 @@ function drawDance(p, x, y, target) {
     dx = Math.sin(t * Math.PI * 2.4) * 5; lift = Math.abs(wide) * 4;
     tilt = wide * 0.12; face = Math.cos(t * Math.PI * 2.4) < 0 ? -p.face : p.face;
   }
+  else if (p.character === 'marx') { dx = wide * 3; lift = Math.max(0, beat) * 3; tilt = wide * 0.08; }
+  else if (p.character === 'doom') { dx = beat * 3; lift = Math.abs(beat) * 3; tilt = beat * 0.12; }
+  else if (p.character === 'ron') { dx = wide * 4; lift = Math.max(0, beat) * 5; tilt = wide * 0.11; }
+  else if (p.character === 'shrek') { dx = wide * 2; lift = Math.max(0, beat) * 2; tilt = wide * 0.09; }
   ctx.save();
   ctx.translate(x + dx, y - 34 - lift);
   ctx.rotate(tilt);
@@ -1025,6 +1107,20 @@ function drawDance(p, x, y, target) {
       ctx.fillStyle = offset ? '#f1d68f' : '#e4a7ff';
       ctx.fillRect(px + Math.cos(a) * 36 - 4, py - 53 + Math.sin(a) * 15, 8, 8);
     }
+  } else if (p.character === 'marx') {
+    ctx.fillStyle = '#b74646'; ctx.fillRect(px + p.face * 29 - 8, py - 78 - Math.max(0, beat) * 9, 17, 21);
+    ctx.fillStyle = '#ecd6a5'; ctx.fillRect(px + p.face * 29 - 5, py - 74 - Math.max(0, beat) * 9, 11, 2);
+  } else if (p.character === 'doom') {
+    ctx.fillStyle = '#c8caba'; ctx.fillRect(px + p.face * 32 - 5, py - 68 - lift, 10, 12);
+    ctx.fillStyle = '#d8bd78'; ctx.fillRect(px + p.face * 32 - 2, py - 56 - lift, 4, 14);
+    ctx.fillStyle = '#e8d896'; ctx.fillRect(px - 36, py - 74 - Math.abs(wide) * 6, 5, 5);
+  } else if (p.character === 'ron') {
+    ctx.fillStyle = '#f1e4ca'; ctx.fillRect(px + p.face * 30 - 7, py - 38 - Math.abs(beat) * 11, 14, 4);
+    ctx.fillRect(px + p.face * 30 - 4, py - 49 - Math.abs(beat) * 11, 8, 11);
+  } else if (p.character === 'shrek') {
+    ctx.fillStyle = '#a6b970'; ctx.fillRect(px - 36, py - 7, 11 + Math.abs(beat) * 5, 5);
+    ctx.fillRect(px + 24, py - 7, 11 + Math.abs(beat) * 5, 5);
+    ctx.fillStyle = '#9bcc6c'; ctx.fillRect(px + p.face * 31 - 5, py - 65 - lift, 10, 10);
   }
 }
 
@@ -1122,6 +1218,13 @@ function drawPlayer(p, lag) {
     ctx.fillStyle = '#dcc999aa';
     for (let i = 0; i < 3; i++) ctx.fillRect(x - p.face * (30 + i * 18) - 6, y - 6 - i * 5, 12 + i * 3, 6 + i * 2);
     ctx.save(); ctx.translate(x, y); ctx.rotate(p.face * 0.24);
+    drawFighter(ctx, p.character, 0, 0, 2.1, p.face, 'smash', 0.3, false);
+    ctx.restore();
+  } else if (p.rush === 'march' || p.rush === 'ogre') {
+    const ogre = p.rush === 'ogre';
+    ctx.fillStyle = ogre ? '#8baa60aa' : '#e2c7a4aa';
+    for (let i = 0; i < 3; i++) ctx.fillRect(x - p.face * (28 + i * 18) - 7, y - 8 - i * 3, 14, 6);
+    ctx.save(); ctx.translate(x, y); ctx.rotate(p.face * (ogre ? 0.26 : 0.16));
     drawFighter(ctx, p.character, 0, 0, 2.1, p.face, 'smash', 0.3, false);
     ctx.restore();
   } else if (p.emoteTime > 0 && p.grounded && !p.attack) drawDance(p, x, y);

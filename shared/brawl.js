@@ -25,6 +25,10 @@ export const FIGHTERS = Object.freeze({
   isabelle: { label: 'Isabelle', color: '#f7d88b', accent: '#9bce8c', speed: 278, weight: 0.9, jump: 605, air: 1.04, special: 'Fiskestang', recovery: 840, recoveryDrift: 310 },
   wario: { label: 'Wario', color: '#f5d34d', accent: '#9162b6', speed: 265, weight: 1.13, jump: 570, air: 0.9, special: 'Fis · lades opp over tid', recovery: 735, recoveryDrift: 260 },
   zelda: { label: 'Zelda', color: '#c998ed', accent: '#f1d68f', speed: 274, weight: 0.93, jump: 598, air: 1.02, special: 'Dins ild', recovery: 855, recoveryDrift: 305 },
+  marx: { label: 'Karl Marx', color: '#a73f45', accent: '#e8cc98', speed: 268, weight: 1.02, jump: 580, air: 0.98, special: 'Pamflett · arbeiderstøt', recovery: 785, recoveryDrift: 275 },
+  doom: { label: 'MF DOOM', color: '#8b9a8e', accent: '#d8bd78', speed: 288, weight: 0.98, jump: 605, air: 1.04, special: 'Mikrofon · vinylplate', recovery: 820, recoveryDrift: 300 },
+  ron: { label: 'Ron Weasley', color: '#cc7649', accent: '#e7d7b6', speed: 280, weight: 0.96, jump: 595, air: 1.03, special: 'Sjakkbrikker · tårn', recovery: 825, recoveryDrift: 295 },
+  shrek: { label: 'Shrek', color: '#86b653', accent: '#e9d7a6', speed: 260, weight: 1.16, jump: 565, air: 0.91, special: 'Sumpklump · ogreløp', recovery: 745, recoveryDrift: 255 },
 });
 
 export const DIN_FIRE = Object.freeze({ radius: 62, damage: 10, base: 175, growth: 525, angle: 73 });
@@ -42,6 +46,10 @@ export const BRAWL_EMOTE_LINES = Object.freeze({
   isabelle: { text: 'La oss danse!', speech: 'La oss danse!', pitch: 1.45, rate: 1.08 },
   wario: { text: 'wah-ha-ha!', speech: 'wah ha ha!', pitch: 0.7, rate: 0.9 },
   zelda: { text: 'for Hyrule!', speech: 'for Hyrule!', pitch: 1.05, rate: 0.95 },
+  marx: { text: 'Seize the means of production!', speech: 'Seize the means of production!', lang: 'en-US', pitch: 0.78, rate: 0.9 },
+  doom: { text: 'All caps when you spell the man name.', speech: 'All caps when you spell the man name.', lang: 'en-US', pitch: 0.7, rate: 0.92 },
+  ron: { text: 'Sjakkmatt!', speech: 'Sjakkmatt!', pitch: 1.15, rate: 1.05 },
+  shrek: { text: 'Ut av sumpen min!', speech: 'Ut av sumpen min!', pitch: 0.68, rate: 0.88 },
 });
 
 // startup = delay before the hit comes out, active = how long it can hit, total = until the fighter can act again.
@@ -75,6 +83,10 @@ export const SPECIAL2 = Object.freeze({
   pikachu: { rush: { kind: 'quick', speed: 1150, time: 0.15, reach: 36, damage: 6, base: 135, growth: 400, angle: 60, endOnHit: true, invuln: 0.2 } },
   wario: { rush: { kind: 'shoulder', speed: 430, time: 0.40, reach: 40, damage: 12, base: 215, growth: 640, angle: 40 } },
   zelda: { farore: { distance: 165, lift: 140, invuln: 0.28 } },
+  marx: { rush: { kind: 'march', speed: 390, time: 0.42, reach: 38, damage: 9, base: 170, growth: 500, angle: 53 } },
+  doom: { projectile: { kind: 'record', speed: 710, life: 0.95, damage: 6, base: 125, growth: 360, angle: 50 } },
+  ron: { projectile: { kind: 'rook', speed: 625, life: 1.15, damage: 9, base: 175, growth: 470, angle: 55 } },
+  shrek: { rush: { kind: 'ogre', speed: 400, time: 0.43, reach: 43, damage: 11, base: 205, growth: 570, angle: 46 } },
 });
 
 export const CHAIN = Object.freeze({ window: 1.6, step: 0.08, max: 0.42 });

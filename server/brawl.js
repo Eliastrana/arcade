@@ -330,11 +330,15 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
     const styles = {
       isabelle: { kind: 'rod', speed: 690, vy: -35, gravity: 140, bounce: 0, damage: 5, base: 110, growth: 340, angle: 65 },
       zelda: { kind: 'din', speed: 520, vy: 0, gravity: 0, bounce: 0, life: 0.86 },
+      marx: { kind: 'pamphlet', speed: 660, vy: -65, gravity: 160, bounce: 0, life: 1.25, damage: 7, base: 145, growth: 430, angle: 54 },
+      doom: { kind: 'mic', speed: 700, vy: -35, gravity: 210, bounce: 0, life: 1.15, damage: 7, base: 145, growth: 430, angle: 57 },
+      ron: { kind: 'knight', speed: 640, vy: -85, gravity: 270, bounce: 0, life: 1.3, damage: 7, base: 145, growth: 430, angle: 55 },
+      shrek: { kind: 'mud', speed: 545, vy: -75, gravity: 350, bounce: 0, life: 1.25, damage: 8, base: 165, growth: 480, angle: 53 },
     };
     const style = styles[p.character];
     projectiles.push({ id: nextProjectile++, owner: p.id, character: p.character,
       x: p.x + p.face * 32, y: p.y - 42, vx: p.face * style.speed,
-      vy: style.vy, life: 1.55, bounce: style.bounce, ...style });
+      vy: style.vy, life: 1.55, bounce: style.bounce, staleKind: 'special', ...style });
     events.push({ type: 'projectile', p: p.id, x: p.x, y: p.y });
   }
 
@@ -342,9 +346,9 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
   function fireSpecial2(p) {
     const s = SPECIAL2[p.character];
     if (!s) return;
-    if (s.fireball || s.sling) {
-      const m = s.fireball ?? s.sling;
-      projectiles.push({ id: nextProjectile++, owner: p.id, character: p.character, kind: s.fireball ? 'fire' : 'sling',
+    if (s.fireball || s.sling || s.projectile) {
+      const m = s.fireball ?? s.sling ?? s.projectile;
+      projectiles.push({ id: nextProjectile++, owner: p.id, character: p.character, kind: m.kind ?? (s.fireball ? 'fire' : 'sling'),
         x: p.x + p.face * 30, y: p.y - 40, vx: p.face * m.speed, vy: s.fireball ? -60 : 0, gravity: m.gravity ?? 0,
         bounce: m.bounce ?? 0, life: m.life, damage: m.damage, base: m.base, growth: m.growth, angle: m.angle, staleKind: 'special2' });
     } else if (s.rush) {
