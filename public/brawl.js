@@ -933,8 +933,103 @@ function drawNightCity(g, time) {
   }
 }
 
+function drawHogwarts(g, time) {
+  const sky = g.createLinearGradient(0, 0, 0, 540);
+  sky.addColorStop(0, '#101a32'); sky.addColorStop(0.68, '#4c526c'); sky.addColorStop(1, '#777080');
+  g.fillStyle = sky; g.fillRect(0, 0, 960, 540);
+
+  const moonlight = g.createRadialGradient(148, 102, 24, 148, 102, 145);
+  moonlight.addColorStop(0, '#d4d0c479'); moonlight.addColorStop(1, '#d4d0c400');
+  g.fillStyle = moonlight; g.fillRect(0, 0, 310, 260);
+  g.fillStyle = '#e8dfc6'; g.beginPath(); g.arc(148, 102, 42, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#c5c5bd'; g.fillRect(130, 89, 8, 5); g.fillRect(160, 112, 11, 5);
+  for (let i = 0; i < 48; i++) {
+    const x = (i * 167 + 29) % 958, y = (i * 73 + 17) % 247;
+    g.fillStyle = Math.sin(time * 0.002 + i * 3) > 0.65 ? '#fff0ba' : '#aaaac3';
+    g.fillRect(x, y, i % 7 === 0 ? 3 : 2, i % 7 === 0 ? 3 : 2);
+  }
+  for (let i = 0; i < 5; i++) {
+    const x = ((i * 239 + time * (i % 2 ? -0.004 : 0.006)) % 1200 + 1200) % 1200 - 120;
+    const y = 99 + i * 41;
+    g.fillStyle = i % 2 ? '#9c9bb234' : '#c0bdc13b';
+    g.fillRect(x, y, 135, 20); g.fillRect(x + 24, y - 12, 91, 15);
+  }
+
+  g.fillStyle = '#30394f';
+  g.beginPath(); g.moveTo(0, 358); g.lineTo(106, 277); g.lineTo(227, 355);
+  g.lineTo(326, 290); g.lineTo(451, 360); g.lineTo(664, 268);
+  g.lineTo(790, 344); g.lineTo(911, 272); g.lineTo(960, 318); g.lineTo(960, 540); g.lineTo(0, 540); g.fill();
+  g.fillStyle = '#1c2b3c';
+  for (let i = 0; i < 68; i++) {
+    const x = i * 17 - 10, h = 20 + (i * 37 % 47);
+    g.fillRect(x, 389 - h, 13, h + 50);
+    g.beginPath(); g.moveTo(x - 5, 389 - h + 3); g.lineTo(x + 6, 389 - h - 20);
+    g.lineTo(x + 18, 389 - h + 3); g.fill();
+  }
+
+  const stone = (x, y, w, h, color = '#55576a') => {
+    g.fillStyle = '#282c42'; g.fillRect(x - 4, y - 4, w + 8, h + 8);
+    g.fillStyle = color; g.fillRect(x, y, w, h);
+    g.fillStyle = '#6e6e7a'; g.fillRect(x, y, 5, h); g.fillRect(x, y, w, 5);
+    g.fillStyle = '#414557';
+    for (let row = y + 15, n = 0; row < y + h; row += 18, n++) {
+      g.fillRect(x + 6, row, w - 11, 2);
+      for (let bx = x + (n % 2 ? 9 : 24); bx < x + w - 6; bx += 33)
+        g.fillRect(bx, row - 14, 2, 13);
+    }
+  };
+  const roof = (x, y, w, peak) => {
+    g.fillStyle = '#1d233b';
+    g.beginPath(); g.moveTo(x - 9, y); g.lineTo(x + w / 2, peak - 8);
+    g.lineTo(x + w + 9, y); g.closePath(); g.fill();
+    g.fillStyle = '#4d5168';
+    g.beginPath(); g.moveTo(x - 2, y - 4); g.lineTo(x + w / 2, peak);
+    g.lineTo(x + w + 2, y - 4); g.closePath(); g.fill();
+    g.fillStyle = '#8e8190'; g.fillRect(x + w / 2 - 3, peak - 4, 6, 11);
+  };
+  const window = (x, y, w = 10, h = 22) => {
+    g.fillStyle = '#272b42'; g.fillRect(x - 3, y - 3, w + 6, h + 6);
+    g.fillStyle = '#d9ab65'; g.fillRect(x, y + 4, w, h - 4);
+    g.fillStyle = '#f1d99a'; g.fillRect(x + 2, y + 7, Math.max(2, w - 5), h - 10);
+    g.fillStyle = '#5a4c53'; g.fillRect(x + Math.floor(w / 2), y + 4, 2, h - 4);
+  };
+
+  // The castle sits behind the battleground; roofs and lit windows stay visible above the platforms.
+  stone(320, 260, 320, 178, '#5b5c6d'); roof(310, 260, 340, 178);
+  stone(226, 225, 99, 213); roof(220, 225, 111, 143);
+  stone(632, 231, 108, 207); roof(626, 231, 120, 146);
+  stone(369, 193, 75, 245, '#5e5d6a'); roof(363, 193, 87, 91);
+  stone(560, 204, 74, 234, '#5a5a69'); roof(554, 204, 86, 103);
+  stone(465, 139, 70, 299, '#62606e'); roof(458, 139, 84, 42);
+  g.fillStyle = '#d8bd85'; g.fillRect(497, 34, 5, 19); g.fillRect(491, 39, 17, 4);
+  g.fillStyle = '#3b3b51'; g.fillRect(337, 264, 285, 9);
+  for (let x = 350; x < 620; x += 35) { window(x, 289, 15, 32); window(x, 354, 15, 32); }
+  for (const [x, y] of [[259, 265], [259, 326], [291, 265], [291, 326],
+    [663, 269], [701, 269], [663, 333], [701, 333], [395, 233], [582, 242],
+    [487, 166], [487, 223], [487, 281], [487, 340]]) window(x, y, 11, 25);
+  g.fillStyle = '#292c42'; g.fillRect(466, 408, 69, 31);
+  g.fillStyle = '#bc995e'; g.fillRect(478, 411, 45, 27);
+  g.fillStyle = '#392f3c'; g.fillRect(501, 411, 3, 27);
+  g.fillStyle = '#a69a93';
+  for (let x = 317; x < 650; x += 27) g.fillRect(x, 255, 14, 9);
+
+  g.fillStyle = '#202d43'; g.fillRect(0, 438, 960, 102);
+  for (let i = 0; i < 33; i++) {
+    const x = (i * 97 + 13) % 960, y = 448 + (i * 43) % 81;
+    g.fillStyle = i % 3 ? '#68708658' : '#c7a87a67';
+    g.fillRect(x, y, 31 + i % 4 * 7, 2);
+  }
+  for (let i = 0; i < 14; i++) {
+    const x = (i * 163 + 70) % 940, y = 205 + (i * 47) % 183;
+    const glow = Math.sin(time * 0.003 + i) > -0.3;
+    g.fillStyle = glow ? '#ffe8a2' : '#aa9c8b';
+    g.fillRect(x, y + Math.sin(time * 0.0015 + i) * 3, 4, 4);
+  }
+}
+
 function drawBackdrop(g, world, time) {
   if (world === 'nightcity') { drawNightCity(g, time); return; }
+  if (world === 'hogwarts') { drawHogwarts(g, time); return; }
   if (backdropReady) {
     g.drawImage(backdropCanvas, 0, 0);
     return;
@@ -947,6 +1042,35 @@ function drawBackdrop(g, world, time) {
 function drawStage(g, world) {
   for (const platform of BRAWL.platforms) {
     const { x, y, w, h, main } = platform;
+    if (world === 'hogwarts') {
+      const depth = h + (main ? 34 : 12);
+      g.fillStyle = '#24263b'; g.fillRect(x - 6, y + 6, w + 12, depth + 7);
+      g.fillStyle = '#626374'; g.fillRect(x, y, w, depth);
+      g.fillStyle = '#9996a0'; g.fillRect(x, y, w, 6);
+      g.fillStyle = '#e2c486'; g.fillRect(x + 5, y + 6, w - 10, 3);
+      g.fillStyle = '#494d60';
+      for (let bx = x + 20; bx < x + w - 12; bx += 42) {
+        g.fillRect(bx, y + 16, 23, 2);
+        g.fillRect(bx + 11, y + 18, 2, depth - 21);
+      }
+      if (main) {
+        g.fillStyle = '#38394d';
+        for (let bx = x + 58; bx < x + w - 40; bx += 105) {
+          g.fillRect(bx, y + 24, 46, 27);
+          g.fillStyle = '#817c89'; g.fillRect(bx + 5, y + 28, 36, 21);
+          g.fillStyle = '#38394d';
+        }
+        for (const [offset, color] of [[110, '#a85b59'], [230, '#af925b'],
+          [350, '#5e819e'], [470, '#5d866b']]) {
+          g.fillStyle = color; g.fillRect(x + offset, y + 9, 13, 24);
+          g.fillStyle = '#e4cc92'; g.fillRect(x + offset + 3, y + 13, 7, 3);
+        }
+      } else {
+        g.fillStyle = '#e8d59b';
+        g.fillRect(x + w / 2 - 2, y + 1, 4, 4);
+      }
+      continue;
+    }
     if (world === 'nightcity') {
       g.fillStyle = '#231c37'; g.fillRect(x - 6, y + 6, w + 12, h + (main ? 27 : 8));
       g.fillStyle = main ? '#76638f' : '#8b70ac'; g.fillRect(x, y, w, h + (main ? 20 : 0));

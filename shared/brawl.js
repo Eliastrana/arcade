@@ -14,6 +14,7 @@ export const BRAWL = Object.freeze({
 export const BRAWL_WORLDS = Object.freeze({
   dolomittene: 'Dolomittene',
   nightcity: 'Natteby',
+  hogwarts: 'Hogwarts',
 });
 
 export const BRAWL_TEAMS = Object.freeze({ red: '#f27a72', blue: '#79beff' });
