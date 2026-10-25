@@ -1,4 +1,4 @@
-import { BRAWL, BRAWL_WORLDS, BRAWL_TEAMS, BRAWL_EMOTE, BRAWL_EMOTE_LINES, FIGHTERS, ATTACKS, CAPE, EGG_LAY, ATTACK_LAG, CHAIN, STALE, SPECIAL2, THUNDER, DIN_FIRE, eggLayDuration, isBrawlRollInvulnerable, makeFighter, knockback, launchBrawlVelocity, waftBrawlAttack, throwBrawlVelocity, resetFighter, isOut, jumpBrawlFighter, recoverBrawlFighter, stepBrawlMovement } from '../shared/brawl.js';
+import { BRAWL, BRAWL_WORLDS, BRAWL_TEAMS, BRAWL_EMOTE, BRAWL_EMOTE_LINES, FIGHTERS, ATTACKS, CAPE, EGG_LAY, ATTACK_LAG, CHAIN, STALE, SPECIAL2, THUNDER, DIN_FIRE, MIC_WAVE, LEVIOSA, SLIME, eggLayDuration, isBrawlRollInvulnerable, makeFighter, knockback, launchBrawlVelocity, waftBrawlAttack, throwBrawlVelocity, resetFighter, isOut, jumpBrawlFighter, recoverBrawlFighter, stepBrawlMovement } from '../shared/brawl.js';
 
 const MAX_PLAYERS = 4;
 const RESULTS_SECONDS = 7;
@@ -11,6 +11,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
   const clients = new Map();
   let nextId = 1;
   let nextProjectile = 1;
+  let nextPuddle = 1;
   let frame = 0;
   let phase = 'lobby';
   let countdown = 0;
@@ -23,6 +24,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
   let friendlyFire = false;
   let world = 'dolomittene';
   let projectiles = [];
+  let puddles = [];
   let events = [];
 
   const participants = () => [...clients.values()].filter(p => !p.spectator);
@@ -62,7 +64,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
     if (clients.size) return;
     openLobby(); elapsed = 0;
     mode = 'ffa'; friendlyFire = false;
-    projectiles = []; events = [];
+    projectiles = []; puddles = []; events = [];
     onEmpty?.();
   }
 
@@ -87,7 +89,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
     phase = 'countdown'; countdown = 3.2; winner = null; winnerTeam = null; elapsed = 0;
     world = chooseWorld(ready);
     lastActivityAt = Date.now();
-    projectiles = [];
+    projectiles = []; puddles = [];
     const teamSlots = { red: [0, 2], blue: [1, 3] };
     ready.forEach((p, slot) => resetFighter(p, mode === 'teams' ? teamSlots[p.team].shift() : slot));
     events.push({ type: 'countdown' });
@@ -188,7 +190,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
   }
 
   function emote(p) {
-    if (p.stocks <= 0 || p.respawn > 0 || !p.grounded || p.stun > 0 || p.attack ||
+    if (p.stocks <= 0 || p.respawn > 0 || !p.grounded || p.stun > 0 || p.leviosaTime > 0 || p.attack ||
         p.shielding || p.input.shield || p.rollTime > 0 || p.grabTarget || p.grabbedBy ||
         p.eggTime > 0 || p.hookTime > 0 || p.emoteCooldown > 0 ||
         (Date.now() - p.input.lastAt < 250 && p.input.move)) return;
@@ -206,7 +208,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
   }
 
   function attack(p, kind) {
-    if (p.stocks <= 0 || p.respawn > 0 || p.stun > 0 || p.attack || p.attackLag > 0 || p.shielding || p.rollTime > 0 || p.input.shield || p.grabTarget || p.grabbedBy) return;
+    if (p.stocks <= 0 || p.respawn > 0 || p.stun > 0 || p.leviosaTime > 0 || p.attack || p.attackLag > 0 || p.shielding || p.rollTime > 0 || p.input.shield || p.grabTarget || p.grabbedBy) return;
     if (kind === 'upair') {
       if (!recoverBrawlFighter(p, p.input.move)) return;
       events.push({ type: 'recovery', p: p.id, x: p.x, y: p.y });
@@ -237,6 +239,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
     target.attack = null; target.vx = 0; target.vy = 0;
     target.grounded = false; target.coyote = 0; target.drop = 0; target.throwBounce = 0;
     target.hookedBy = null; target.hookTime = 0;
+    target.leviosaTime = 0;
     target.x = holder.x + holder.face * 35; target.y = holder.y - 9;
     events.push({ type: 'grab', p: holder.id, to: target.id, x: target.x, y: target.y - 38 });
     return true;
@@ -262,6 +265,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
     }
     target.grounded = false; target.coyote = 0; target.drop = 0;
     target.hookedBy = null; target.hookTime = 0;
+    target.leviosaTime = 0;
     target.stun = LIMIT(0.22 + velocity.speed / 1800, 0.28, 0.85);
     target.flash = 0.18;
     target.lastHitBy = holder.id; target.lastHitAt = elapsed;
@@ -275,6 +279,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
     if (target.grabTarget) releaseGrab(target);
     target.throwBounce = 0;
     target.hookedBy = null; target.hookTime = 0;
+    target.leviosaTime = 0;
     if (target.shielding && move !== ATTACKS.grab) {
       target.shield = Math.max(0, target.shield - 14 - move.damage * 2.3);
       target.shieldRegenDelay = 0.8;
@@ -314,7 +319,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
     if (p.spectator || p.stocks <= 0 || p.respawn > 0) { p.shielding = false; return; }
     p.shieldBreak = Math.max(0, p.shieldBreak - dt);
     p.shieldRegenDelay = Math.max(0, p.shieldRegenDelay - dt);
-    p.shielding = !p.rollTime && !p.grabTarget && !p.grabbedBy && !!p.input.shield && Date.now() - p.input.lastAt < 300 &&
+    p.shielding = !p.rollTime && !p.grabTarget && !p.grabbedBy && !p.leviosaTime && !!p.input.shield && Date.now() - p.input.lastAt < 300 &&
       p.grounded && p.shield > 0 && p.shieldBreak <= 0 && p.stun <= 0 && !p.attack;
     if (p.shielding) {
       p.shield = Math.max(0, p.shield - 18 * dt);
@@ -331,15 +336,54 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
       isabelle: { kind: 'rod', speed: 690, vy: -35, gravity: 140, bounce: 0, damage: 5, base: 110, growth: 340, angle: 65 },
       zelda: { kind: 'din', speed: 520, vy: 0, gravity: 0, bounce: 0, life: 0.86 },
       marx: { kind: 'pamphlet', speed: 660, vy: -65, gravity: 160, bounce: 0, life: 1.25, damage: 7, base: 145, growth: 430, angle: 54 },
-      doom: { kind: 'mic', speed: 700, vy: -35, gravity: 210, bounce: 0, life: 1.15, damage: 7, base: 145, growth: 430, angle: 57 },
       ron: { kind: 'knight', speed: 640, vy: -85, gravity: 270, bounce: 0, life: 1.3, damage: 7, base: 145, growth: 430, angle: 55 },
-      shrek: { kind: 'mud', speed: 545, vy: -75, gravity: 350, bounce: 0, life: 1.25, damage: 8, base: 165, growth: 480, angle: 53 },
+      shrek: { kind: 'mud', speed: 495, vy: -75, gravity: 330, bounce: 0, life: 1.35, radius: SLIME.projectileRadius,
+        damage: 8, base: 165, growth: 480, angle: 53 },
     };
     const style = styles[p.character];
     projectiles.push({ id: nextProjectile++, owner: p.id, character: p.character,
       x: p.x + p.face * 32, y: p.y - 42, vx: p.face * style.speed,
       vy: style.vy, life: 1.55, bounce: style.bounce, staleKind: 'special', ...style });
     events.push({ type: 'projectile', p: p.id, x: p.x, y: p.y });
+  }
+
+  function shockwaveMic(p) {
+    const x = p.x, y = p.y - 38;
+    events.push({ type: 'micwave', p: p.id, x, y, radius: MIC_WAVE.radius });
+    for (const target of participants()) {
+      if (target.id === p.id || Math.hypot(target.x - x, target.y - 38 - y) > MIC_WAVE.radius) continue;
+      if (damage(p, target, MIC_WAVE, target.x, target.y - 38, Math.sign(target.x - p.x) || p.face))
+        p.attackVictims?.add(target.id);
+    }
+  }
+
+  function castLeviosa(p) {
+    const target = participants().filter(other => other.id !== p.id && canHit(p, other) &&
+      (other.x - p.x) * p.face >= -8 && (other.x - p.x) * p.face <= LEVIOSA.range &&
+      Math.abs(other.y - p.y) <= LEVIOSA.height && other.stocks > 0 && other.respawn <= 0 &&
+      other.invuln <= 0 && !isBrawlRollInvulnerable(other) && !other.grabbedBy)
+      .sort((a, b) => Math.abs(a.x - p.x) - Math.abs(b.x - p.x))[0];
+    events.push({ type: 'leviosacast', p: p.id, x: p.x + p.face * 22, y: p.y - 58,
+      x2: target?.x ?? p.x + p.face * LEVIOSA.range, y2: target ? target.y - 40 : p.y - 58 });
+    if (!target) return;
+    const guarded = target.shielding;
+    if (!damage(p, target, LEVIOSA, target.x, target.y - 38, p.face) || guarded) return;
+    target.leviosaTime = LEVIOSA.duration;
+    target.leviosaY = Math.max(-70, target.y - LEVIOSA.rise);
+    target.vx = 0; target.vy = 0; target.stun = Math.max(target.stun, LEVIOSA.duration);
+    target.grounded = false; target.coyote = 0; target.drop = 0;
+    p.attackVictims?.add(target.id);
+    events.push({ type: 'leviosa', p: p.id, to: target.id, x: target.x, y: target.y - 38 });
+  }
+
+  function createPuddle(p) {
+    const support = BRAWL.platforms.filter(platform => p.x >= platform.x - 12 &&
+      p.x <= platform.x + platform.w + 12 && platform.y >= p.y - 3)
+      .sort((a, b) => a.y - b.y)[0] ?? BRAWL.platforms[0];
+    const x = LIMIT(p.x, support.x + 12, support.x + support.w - 12);
+    puddles.push({ id: nextPuddle++, owner: p.id, x, y: support.y, radius: SLIME.puddleRadius,
+      life: SLIME.puddleDuration });
+    events.push({ type: 'puddle', p: p.id, x, y: support.y, radius: SLIME.puddleRadius });
   }
 
   // ---- the second specials (key U)
@@ -357,6 +401,10 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
         move: { damage: r.damage, base: r.base, growth: r.growth, angle: r.angle, staleKind: 'special2' } };
       if (r.invuln) p.invuln = Math.max(p.invuln, r.invuln);
       events.push({ type: 'rush', p: p.id, kind: r.kind, x: p.x, y: p.y });
+    } else if (s.leviosa) {
+      castLeviosa(p);
+    } else if (s.puddle) {
+      createPuddle(p);
     } else if (s.farore) {
       // Teleport sideways (the way she is pushing, else the way she faces). In the air it works once until she lands.
       if (!p.grounded && p.tpUsed) return;
@@ -475,6 +523,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
         p.grabTarget = null; p.grabbedBy = null; p.grabTimer = 0; p.throwBounce = 0;
         p.hookedBy = null; p.hookTime = 0;
         p.spinTime = 0; p.spinDir = 0; p.eggTime = 0;
+        p.slowTime = 0; p.leviosaTime = 0; p.leviosaY = 0;
         p.emoteTime = 0; p.emoteCooldown = 0;
         p.grounded = false; p.lastHitBy = null; p.lastHitAt = -Infinity; p.rush = null; p.tpUsed = false;
         events.push({ type: 'respawn', p: p.id });
@@ -517,6 +566,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
         else if (p.character === 'mario') sweepCape(p);
         else if (p.character === 'yoshi') layEgg(p);
         else if (p.character === 'pikachu') summonThunder(p);
+        else if (p.character === 'doom') shockwaveMic(p);
         else spawnProjectile(p);
       }
       if (kind === 'special2' && !p.attackHit && p.attackTime >= moveData.startup) {
@@ -556,6 +606,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
       p.attack = null; p.rush = null; p.vx = 0; p.vy = 0; p.respawn = p.stocks > 0 ? 1.45 : 9999;
       p.hookedBy = null; p.hookTime = 0;
       p.spinTime = 0; p.spinDir = 0; p.eggTime = 0;
+      p.slowTime = 0; p.leviosaTime = 0; p.leviosaY = 0;
       p.emoteTime = 0;
       p.shielding = false; p.recoveryUsed = false; p.rollTime = 0; p.rollInput = 0;
       p.x = LIMIT(p.x, 0, BRAWL.width); p.y = -100;
@@ -603,7 +654,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
       for (const target of participants()) {
         if (target.id === owner.id || !canHit(owner, target)) continue;
         if (Math.hypot(target.x - projectile.x, target.y - 35 - projectile.y) <
-            (projectile.kind === 'thunder' ? THUNDER.radius : 32)) {
+            (projectile.kind === 'thunder' ? THUNDER.radius : projectile.radius ?? 32)) {
           if (projectile.kind === 'din') {
             detonateDin(projectile, owner);
             break;
@@ -619,11 +670,28 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
             target.hookTime = 0.38;
             events.push({ type: 'hook', p: owner.id, to: target.id, x: target.x, y: target.y - 38 });
           }
+          if (hit && projectile.kind === 'mud' && !guarded && target.stocks > 0)
+            target.slowTime = Math.max(target.slowTime, SLIME.slowDuration);
           if (projectile.life <= 0) break;
         }
       }
     }
     projectiles = projectiles.filter(p => p.life > 0);
+  }
+
+  function stepPuddles(dt) {
+    for (const puddle of puddles) {
+      puddle.life -= dt;
+      const owner = participants().find(p => p.id === puddle.owner);
+      if (!owner) continue;
+      for (const target of participants()) {
+        if (target.id === owner.id || !canHit(owner, target) || target.stocks <= 0 || target.respawn > 0 ||
+            target.invuln > 0 || !target.grounded || Math.abs(target.y - puddle.y) > 14 ||
+            Math.abs(target.x - puddle.x) > puddle.radius) continue;
+        target.slowTime = Math.max(target.slowTime, SLIME.puddleSlowDuration);
+      }
+    }
+    puddles = puddles.filter(p => p.life > 0);
   }
 
   function tick() {
@@ -650,6 +718,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
         target.vx = 0; target.vy = 0;
       }
       stepProjectiles(BRAWL.tick);
+      stepPuddles(BRAWL.tick);
       finish();
       if (Date.now() - lastActivityAt > IDLE_MATCH_MS) finish(true);
     } else if (phase === 'results') {
@@ -674,6 +743,7 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
         grabTarget: p.grabTarget, grabbedBy: p.grabbedBy, grabTimer: +p.grabTimer.toFixed(2), throwBounce: +p.throwBounce.toFixed(1),
         hookedBy: p.hookedBy, hookTime: +p.hookTime.toFixed(2), waftCharge: +p.waftCharge.toFixed(3),
         spinTime: +p.spinTime.toFixed(3), spinDir: p.spinDir, eggTime: +p.eggTime.toFixed(3),
+        slowTime: +p.slowTime.toFixed(3), leviosaTime: +p.leviosaTime.toFixed(3), leviosaY: +p.leviosaY.toFixed(1),
         emoteTime: +p.emoteTime.toFixed(3), emoteCooldown: +p.emoteCooldown.toFixed(3),
         invuln: +p.invuln.toFixed(2), respawn: +p.respawn.toFixed(2),
         kos: p.kos, falls: p.falls, flash: +p.flash.toFixed(2),
@@ -683,6 +753,8 @@ export function createBrawlRoom({ id: roomId = 1, onEmpty } = {}) {
         x: +p.x.toFixed(1), y: +p.y.toFixed(1),
         vx: +p.vx.toFixed(1), vy: +p.vy.toFixed(1), gravity: p.gravity,
       })),
+      puddles: puddles.map(p => ({ id: p.id, owner: p.owner, x: +p.x.toFixed(1), y: p.y,
+        radius: p.radius, life: +p.life.toFixed(2) })),
       events,
     });
     events = [];

@@ -1,4 +1,4 @@
-import { BRAWL, BRAWL_WORLDS, BRAWL_TEAMS, BRAWL_ROLL, BRAWL_EMOTE, BRAWL_EMOTE_LINES, FIGHTERS, ATTACKS, CAPE, EGG_LAY, isBrawlRollInvulnerable, makeFighter, knockback } from '/shared/brawl.js';
+import { BRAWL, BRAWL_WORLDS, BRAWL_TEAMS, BRAWL_ROLL, BRAWL_EMOTE, BRAWL_EMOTE_LINES, FIGHTERS, ATTACKS, CAPE, EGG_LAY, MIC_WAVE, SLIME, isBrawlRollInvulnerable, makeFighter, knockback } from '/shared/brawl.js';
 import { BrawlTimeline, BrawlPredictor } from '/shared/brawl-client.js';
 import { music } from '/music.js';
 
@@ -78,7 +78,7 @@ const timeline = new BrawlTimeline(), predictor = new BrawlPredictor();
 let inputVersion = 1, inputSeq = 0, queuedJump = false, queuedUpair = false, simAccumulator = 0;
 let pingTimer = null, pingId = 0, probeCount = 0, probeMode = 'ws', httpProbe = null;
 const pendingPings = new Map(), pingTimes = [], probeResults = [];
-let audio = null, shake = 0, particles = [], waftEffects = [], dinEffects = [], previousPhase = null;
+let audio = null, shake = 0, particles = [], waftEffects = [], dinEffects = [], micEffects = [], spellEffects = [], previousPhase = null;
 let speakingPlayerId = null, activeUtterance = null;
 let visibleFlash = '', flashUntil = 0;
 let browsing = false;       // after the title screen: choosing a room (no connection to a room yet)
@@ -531,6 +531,15 @@ function onState(s) {
       burst(event.x, event.y, '#e4a7ff', 22, 250);
       shake = Math.max(shake, 4);
       sound('dinblast');
+    } else if (event.type === 'micwave') {
+      micEffects.push({ x: event.x, y: event.y, radius: event.radius || MIC_WAVE.radius, life: 0.38 });
+      burst(event.x, event.y, '#d8bd78', 22, 230);
+      shake = Math.max(shake, 5); sound('hit', 550);
+    } else if (event.type === 'leviosacast') {
+      spellEffects.push({ x: event.x, y: event.y, x2: event.x2, y2: event.y2, life: 0.32 });
+      burst(event.x2, event.y2, '#d6e8ff', 10, 105); sound('recovery');
+    } else if (event.type === 'puddle') {
+      burst(event.x, event.y, '#a9c46d', 18, 115); sound('waft');
     } else if (event.type === 'cape') sound('cape');
     else if (event.type === 'capeturn') burst(event.x, event.y, '#fff0b1', 13, 170);
     else if (event.type === 'tongue') sound('swing');
@@ -980,7 +989,7 @@ function drawProjectile(p, lag, now, players) {
     ctx.restore();
     return;
   }
-  if (['pamphlet', 'mic', 'knight', 'rook', 'mud', 'record'].includes(p.kind)) {
+  if (['pamphlet', 'knight', 'mud', 'record'].includes(p.kind)) {
     ctx.save();
     ctx.translate(x, y);
     ctx.scale(direction, 1);
@@ -989,32 +998,23 @@ function drawProjectile(p, lag, now, players) {
       ctx.fillStyle = '#203743'; ctx.fillRect(-11, -9, 22, 18);
       ctx.fillStyle = '#bd4d4b'; ctx.fillRect(-9, -7, 18, 14);
       ctx.fillStyle = '#f5dcad'; ctx.fillRect(-6, -4, 12, 2); ctx.fillRect(-6, 1, 9, 2);
-    } else if (p.kind === 'mic') {
-      ctx.fillStyle = '#35454a'; ctx.fillRect(-7, -9, 15, 15);
-      ctx.fillStyle = '#bec7bd'; ctx.fillRect(-5, -7, 11, 10);
-      ctx.fillStyle = '#35454a'; ctx.fillRect(7, 3, 11, 4);
-      ctx.fillStyle = '#d8bd78'; ctx.fillRect(-2, -5, 5, 2);
     } else if (p.kind === 'record') {
       ctx.fillStyle = '#d8bd78'; ctx.fillRect(-17, -12, 34, 24);
       ctx.fillStyle = '#303a3d'; ctx.fillRect(-14, -10, 28, 20);
       ctx.fillStyle = '#8f9b8d'; ctx.fillRect(-4, -5, 8, 10);
       ctx.fillStyle = '#d8bd78'; ctx.fillRect(-1, -2, 2, 4);
-    } else if (p.kind === 'knight' || p.kind === 'rook') {
+    } else if (p.kind === 'knight') {
       ctx.fillStyle = '#203743'; ctx.fillRect(-11, 6, 22, 5);
       ctx.fillStyle = '#f3e8cf'; ctx.fillRect(-9, 7, 18, 3);
-      if (p.kind === 'rook') {
-        ctx.fillStyle = '#f3e8cf'; ctx.fillRect(-7, -8, 14, 15);
-        ctx.fillRect(-10, -11, 5, 5); ctx.fillRect(-2, -11, 5, 5); ctx.fillRect(5, -11, 5, 5);
-        ctx.fillStyle = '#9a8069'; ctx.fillRect(-2, -3, 4, 6);
-      } else {
-        ctx.fillStyle = '#f3e8cf'; ctx.fillRect(-7, -3, 12, 10);
-        ctx.fillRect(-5, -10, 7, 9); ctx.fillRect(0, -8, 7, 4);
-        ctx.fillStyle = '#203743'; ctx.fillRect(-2, -7, 2, 2);
-      }
+      ctx.fillStyle = '#f3e8cf'; ctx.fillRect(-7, -3, 12, 10);
+      ctx.fillRect(-5, -10, 7, 9); ctx.fillRect(0, -8, 7, 4);
+      ctx.fillStyle = '#203743'; ctx.fillRect(-2, -7, 2, 2);
     } else {
-      ctx.fillStyle = '#486849'; ctx.fillRect(-12, -8, 24, 17);
-      ctx.fillStyle = '#758a51'; ctx.fillRect(-9, -10, 17, 15);
-      ctx.fillStyle = '#a5aa6b'; ctx.fillRect(-5, -7, 8, 4);
+      ctx.fillStyle = '#385847'; ctx.fillRect(-24, -18, 48, 36);
+      ctx.fillStyle = '#638c52'; ctx.fillRect(-25, -14, 50, 28);
+      ctx.fillStyle = '#8cb365'; ctx.fillRect(-17, -21, 31, 37);
+      ctx.fillStyle = '#b7cb77'; ctx.fillRect(-12, -15, 13, 7); ctx.fillRect(8, 1, 8, 6);
+      ctx.fillStyle = '#4b754a'; ctx.fillRect(-17, 7, 9, 5); ctx.fillRect(11, -11, 7, 5);
     }
     ctx.restore();
     return;
@@ -1041,6 +1041,22 @@ function drawProjectile(p, lag, now, players) {
     ctx.fillStyle = '#fff1c4'; ctx.fillRect(-3, -3, 6, 6);
     ctx.fillStyle = '#f2d9ff'; ctx.fillRect(-14, frame - 7, 4, 4);
     ctx.fillRect(10, 4 - frame, 4, 4);
+  }
+  ctx.restore();
+}
+
+function drawPuddle(p, now) {
+  const fade = Math.min(1, p.life * 2, SLIME.puddleDuration - p.life + 0.2);
+  ctx.save(); ctx.globalAlpha = fade;
+  ctx.fillStyle = '#294c43';
+  ctx.beginPath(); ctx.ellipse(p.x, p.y - 3, p.radius, 17, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#639b5a';
+  ctx.beginPath(); ctx.ellipse(p.x, p.y - 5, p.radius - 6, 12, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#a3c773';
+  for (let i = 0; i < 5; i++) {
+    const bx = p.x + Math.sin(i * 2.2 + p.id) * (p.radius - 23);
+    const by = p.y - 8 + Math.sin(now / 320 + i) * 2;
+    ctx.fillRect(Math.round(bx), Math.round(by), 11 + i % 2 * 6, 3);
   }
   ctx.restore();
 }
@@ -1146,11 +1162,20 @@ function drawEmoteLine(p, x, y) {
 function drawPlayer(p, lag) {
   if (p.stocks <= 0 || p.respawn > 0) return;
   const x = p.x + p.vx * lag;
-  const y = p.grounded ? p.y : p.y + p.vy * lag + 775 * lag * lag;
+  const y = p.grounded || p.leviosaTime > 0 ? p.y : p.y + p.vy * lag + 775 * lag * lag;
   if (x < -30 || x > 990 || y < -60 || y > 590) return;
   const character = FIGHTERS[p.character];
   const teamColor = state?.mode === 'teams' ? BRAWL_TEAMS[p.team] : null;
   ctx.fillStyle = teamColor || '#183e48'; ctx.fillRect(x - 20, y - 1, 40, 5);
+  if (p.slowTime > 0) {
+    ctx.fillStyle = '#7eb05caa'; ctx.fillRect(x - 26, y - 6, 52, 6);
+    ctx.fillStyle = '#b0ca77'; ctx.fillRect(x - 16, y - 10, 9, 5); ctx.fillRect(x + 10, y - 9, 7, 4);
+  }
+  if (p.leviosaTime > 0) {
+    ctx.strokeStyle = '#d8e7ff'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.ellipse(x, y - 38, 32, 47, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#fff3bc'; ctx.fillRect(x - 35, y - 68, 6, 6); ctx.fillRect(x + 30, y - 26, 5, 5);
+  }
   if (p.stun > 0.08) {
     ctx.fillStyle = character.color + '77';
     ctx.fillRect(x - p.vx * 0.035 - 15, y - 60 - p.vy * 0.02, 30, 53);
@@ -1220,12 +1245,26 @@ function drawPlayer(p, lag) {
     ctx.save(); ctx.translate(x, y); ctx.rotate(p.face * 0.24);
     drawFighter(ctx, p.character, 0, 0, 2.1, p.face, 'smash', 0.3, false);
     ctx.restore();
-  } else if (p.rush === 'march' || p.rush === 'ogre') {
-    const ogre = p.rush === 'ogre';
-    ctx.fillStyle = ogre ? '#8baa60aa' : '#e2c7a4aa';
-    for (let i = 0; i < 3; i++) ctx.fillRect(x - p.face * (28 + i * 18) - 7, y - 8 - i * 3, 14, 6);
-    ctx.save(); ctx.translate(x, y); ctx.rotate(p.face * (ogre ? 0.26 : 0.16));
-    drawFighter(ctx, p.character, 0, 0, 2.1, p.face, 'smash', 0.3, false);
+  } else if (p.rush === 'train') {
+    ctx.save(); ctx.translate(x, y); ctx.scale(p.face, 1);
+    ctx.fillStyle = '#e2d8bd77';
+    for (let i = 0; i < 3; i++) ctx.fillRect(-82 - i * 19, -30 - i * 7, 18, 10);
+    ctx.fillStyle = '#26363b'; ctx.fillRect(-43, -74, 43, 48);
+    ctx.fillStyle = '#b44846'; ctx.fillRect(-40, -70, 36, 42);
+    ctx.fillStyle = '#e8d39c'; ctx.fillRect(-35, -63, 26, 20);
+    ctx.restore();
+    drawFighter(ctx, p.character, x - p.face * 16, y, 2.1, p.face, null, 0, p.invuln > 0);
+    ctx.save(); ctx.translate(x, y); ctx.scale(p.face, 1);
+    ctx.fillStyle = '#26363b'; ctx.fillRect(-55, -39, 112, 30);
+    ctx.fillStyle = '#a83d43'; ctx.fillRect(-50, -35, 102, 21);
+    ctx.fillStyle = '#dcba7c'; ctx.fillRect(-36, -32, 65, 5); ctx.fillRect(36, -27, 13, 8);
+    ctx.fillStyle = '#26363b'; ctx.fillRect(29, -59, 16, 24);
+    ctx.fillStyle = '#d8ba7c'; ctx.fillRect(33, -56, 8, 19);
+    for (const wx of [-35, 0, 35]) {
+      ctx.fillStyle = '#24363c'; ctx.beginPath(); ctx.arc(wx, -10, 11, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#dfc891'; ctx.beginPath(); ctx.arc(wx, -10, 5, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.fillStyle = '#e8dfc6'; ctx.fillRect(32, -75, 17, 10); ctx.fillRect(41, -85, 22, 10);
     ctx.restore();
   } else if (p.emoteTime > 0 && p.grounded && !p.attack) drawDance(p, x, y);
   else drawFighter(ctx, p.character, x, y, 2.1, p.face, p.attack, p.attackTime, p.invuln > 0);
@@ -1248,6 +1287,16 @@ function drawPlayer(p, lag) {
     ctx.fillStyle = '#e887a4'; ctx.fillRect(x + p.face * 23 - (p.face < 0 ? length : 0), y - 47, length, 9);
     ctx.fillStyle = '#f6a7b7'; ctx.fillRect(x + p.face * 23 - (p.face < 0 ? length : 0), y - 44, length, 3);
     ctx.fillStyle = '#f5bdd0'; ctx.fillRect(x + p.face * (23 + length) - 6, y - 50, 12, 14);
+  }
+  if (p.attack === 'special' && p.character === 'doom' && p.attackTime < ATTACKS.special.total) {
+    ctx.fillStyle = '#2b3c42'; ctx.fillRect(x + p.face * 27 - 7, y - 67, 14, 17);
+    ctx.fillStyle = '#c7d1c5'; ctx.fillRect(x + p.face * 27 - 5, y - 65, 10, 11);
+    ctx.fillStyle = '#d8bd78'; ctx.fillRect(x + p.face * 27 - 2, y - 50, 4, 16);
+  }
+  if (p.attack === 'special2' && p.character === 'ron') {
+    ctx.strokeStyle = '#e7d7b6'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(x + p.face * 17, y - 47); ctx.lineTo(x + p.face * 45, y - 75); ctx.stroke();
+    ctx.fillStyle = '#e2efff'; ctx.fillRect(x + p.face * 45 - 5, y - 81, 10, 10);
   }
   if (p.grabTarget) {
     ctx.strokeStyle = '#ffe0a1'; ctx.lineWidth = 5;
@@ -1718,6 +1767,7 @@ function render(now) {
   } else if (state) {
     const buffered = timeline.sample(now) || state;
     const local = state.phase === 'playing' ? predictor.visual(dt) : null;
+    for (const p of buffered.puddles || []) drawPuddle(p, now);
     for (const p of buffered.projectiles) drawProjectile(p, 0, now, buffered.players);
     for (const p of buffered.players) {
       if (!p.hookedBy || p.hookTime <= 0) continue;
@@ -1742,6 +1792,21 @@ function render(now) {
       ctx.strokeStyle = '#ffe1ff'; ctx.lineWidth = 8 - 5 * progress;
       ctx.beginPath(); ctx.arc(effect.x, effect.y, effect.radius * progress, 0, Math.PI * 2); ctx.stroke();
     }
+    for (const effect of micEffects) {
+      const progress = 1 - effect.life / 0.38;
+      ctx.globalAlpha = Math.max(0, effect.life / 0.38);
+      ctx.strokeStyle = '#d8bd78'; ctx.lineWidth = 10 - 6 * progress;
+      ctx.beginPath(); ctx.arc(effect.x, effect.y, effect.radius * progress, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = '#e4efdb'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(effect.x, effect.y, effect.radius * progress * 0.75, 0, Math.PI * 2); ctx.stroke();
+    }
+    for (const effect of spellEffects) {
+      ctx.globalAlpha = Math.max(0, effect.life / 0.32);
+      ctx.strokeStyle = '#b7d8ff'; ctx.lineWidth = 6;
+      ctx.beginPath(); ctx.moveTo(effect.x, effect.y); ctx.lineTo(effect.x2, effect.y2); ctx.stroke();
+      ctx.strokeStyle = '#fff4d5'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(effect.x, effect.y); ctx.lineTo(effect.x2, effect.y2); ctx.stroke();
+    }
     ctx.globalAlpha = 1;
     for (const p of buffered.players) {
       if (p.spectator) continue;
@@ -1761,6 +1826,10 @@ function render(now) {
   waftEffects = waftEffects.filter(effect => effect.life > 0);
   for (const effect of dinEffects) effect.life -= dt;
   dinEffects = dinEffects.filter(effect => effect.life > 0);
+  for (const effect of micEffects) effect.life -= dt;
+  micEffects = micEffects.filter(effect => effect.life > 0);
+  for (const effect of spellEffects) effect.life -= dt;
+  spellEffects = spellEffects.filter(effect => effect.life > 0);
   for (const particle of particles) {
     particle.vy += 430 * dt;
     particle.x += particle.vx * dt; particle.y += particle.vy * dt;

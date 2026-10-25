@@ -25,10 +25,10 @@ export const FIGHTERS = Object.freeze({
   isabelle: { label: 'Isabelle', color: '#f7d88b', accent: '#9bce8c', speed: 278, weight: 0.9, jump: 605, air: 1.04, special: 'Fiskestang', recovery: 840, recoveryDrift: 310 },
   wario: { label: 'Wario', color: '#f5d34d', accent: '#9162b6', speed: 265, weight: 1.13, jump: 570, air: 0.9, special: 'Fis · lades opp over tid', recovery: 735, recoveryDrift: 260 },
   zelda: { label: 'Zelda', color: '#c998ed', accent: '#f1d68f', speed: 274, weight: 0.93, jump: 598, air: 1.02, special: 'Dins ild', recovery: 855, recoveryDrift: 305 },
-  marx: { label: 'Karl Marx', color: '#a73f45', accent: '#e8cc98', speed: 268, weight: 1.02, jump: 580, air: 0.98, special: 'Pamflett · arbeiderstøt', recovery: 785, recoveryDrift: 275 },
-  doom: { label: 'MF DOOM', color: '#8b9a8e', accent: '#d8bd78', speed: 288, weight: 0.98, jump: 605, air: 1.04, special: 'Mikrofon · vinylplate', recovery: 820, recoveryDrift: 300 },
-  ron: { label: 'Ron Weasley', color: '#cc7649', accent: '#e7d7b6', speed: 280, weight: 0.96, jump: 595, air: 1.03, special: 'Sjakkbrikker · tårn', recovery: 825, recoveryDrift: 295 },
-  shrek: { label: 'Shrek', color: '#86b653', accent: '#e9d7a6', speed: 260, weight: 1.16, jump: 565, air: 0.91, special: 'Sumpklump · ogreløp', recovery: 745, recoveryDrift: 255 },
+  marx: { label: 'Karl Marx', color: '#a73f45', accent: '#e8cc98', speed: 268, weight: 1.02, jump: 580, air: 0.98, special: 'Pamflett · togdash', recovery: 785, recoveryDrift: 275 },
+  doom: { label: 'MF DOOM', color: '#8b9a8e', accent: '#d8bd78', speed: 288, weight: 0.98, jump: 605, air: 1.04, special: 'Mikrofonbølge · vinylplate', recovery: 820, recoveryDrift: 300 },
+  ron: { label: 'Ron Weasley', color: '#cc7649', accent: '#e7d7b6', speed: 280, weight: 0.96, jump: 595, air: 1.03, special: 'Sjakkbrikker · Leviosa', recovery: 825, recoveryDrift: 295 },
+  shrek: { label: 'Shrek', color: '#86b653', accent: '#e9d7a6', speed: 260, weight: 1.16, jump: 565, air: 0.91, special: 'Stor slimball · sumpdam', recovery: 745, recoveryDrift: 255 },
 });
 
 export const DIN_FIRE = Object.freeze({ radius: 62, damage: 10, base: 175, growth: 525, angle: 73 });
@@ -36,6 +36,11 @@ export const CAPE = Object.freeze({ damage: 4, base: 0, growth: 0, angle: 90, re
 export const EGG_LAY = Object.freeze({ damage: 8, base: 0, growth: 0, angle: 90, reach: 122, height: 62,
   baseDuration: 0.6, durationPerPercent: 0.006, maxDuration: 1.8 });
 export const THUNDER = Object.freeze({ damage: 13, base: 185, growth: 550, angle: 82, speed: 1160, radius: 44, offset: 94 });
+export const MIC_WAVE = Object.freeze({ radius: 112, damage: 8, base: 165, growth: 470, angle: 62, staleKind: 'special' });
+export const LEVIOSA = Object.freeze({ duration: 2, range: 230, height: 95, rise: 105, damage: 4,
+  base: 0, growth: 0, angle: 90, staleKind: 'special2' });
+export const SLIME = Object.freeze({ projectileRadius: 45, slowDuration: 2.5, slowFactor: 0.46,
+  puddleRadius: 105, puddleDuration: 4, puddleSlowDuration: 0.32 });
 export const BRAWL_ROLL = Object.freeze({ duration: 0.34, cooldown: 0.8, speed: 440,
   invulnStart: 0.05, invulnEnd: 0.25, shieldCost: 8 });
 export const BRAWL_EMOTE = Object.freeze({ duration: 1.8, cooldown: 2.4 });
@@ -48,7 +53,7 @@ export const BRAWL_EMOTE_LINES = Object.freeze({
   zelda: { text: 'for Hyrule!', speech: 'for Hyrule!', pitch: 1.05, rate: 0.95 },
   marx: { text: 'Seize the means of production!', speech: 'Seize the means of production!', lang: 'en-US', pitch: 0.78, rate: 0.9 },
   doom: { text: 'All caps when you spell the man name.', speech: 'All caps when you spell the man name.', lang: 'en-US', pitch: 0.7, rate: 0.92 },
-  ron: { text: 'Sjakkmatt!', speech: 'Sjakkmatt!', pitch: 1.15, rate: 1.05 },
+  ron: { text: 'Bloody hell!', speech: 'Bloody hell!', lang: 'en-GB', pitch: 1.15, rate: 1.05 },
   shrek: { text: 'Ut av sumpen min!', speech: 'Ut av sumpen min!', pitch: 0.68, rate: 0.88 },
 });
 
@@ -75,6 +80,8 @@ export const ATTACK_LAG = Object.freeze({ jab: 0.10, smash: 0.22, grab: 0.28, sp
 //   Mario     a bouncing fireball                 Isabelle  a fast slingshot pellet
 //   Yoshi     rolls forward inside an egg         Pikachu   a lightning-quick dash that hits at the end
 //   Wario     a heavy shoulder charge             Zelda     teleports a short way (once in the air until she lands)
+//   Marx      a train dash                         DOOM      a flying record
+//   Ron       Leviosa for two seconds              Shrek     a slowing swamp puddle
 // "rush" moves carry the fighter forward for `time` seconds and hit each opponent they touch once.
 export const SPECIAL2 = Object.freeze({
   mario: { fireball: { speed: 430, gravity: 1100, bounce: 3, life: 1.7, damage: 5, base: 105, growth: 330, angle: 45 } },
@@ -83,10 +90,10 @@ export const SPECIAL2 = Object.freeze({
   pikachu: { rush: { kind: 'quick', speed: 1150, time: 0.15, reach: 36, damage: 6, base: 135, growth: 400, angle: 60, endOnHit: true, invuln: 0.2 } },
   wario: { rush: { kind: 'shoulder', speed: 430, time: 0.40, reach: 40, damage: 12, base: 215, growth: 640, angle: 40 } },
   zelda: { farore: { distance: 165, lift: 140, invuln: 0.28 } },
-  marx: { rush: { kind: 'march', speed: 390, time: 0.42, reach: 38, damage: 9, base: 170, growth: 500, angle: 53 } },
+  marx: { rush: { kind: 'train', speed: 410, time: 0.46, reach: 50, damage: 10, base: 185, growth: 525, angle: 52 } },
   doom: { projectile: { kind: 'record', speed: 710, life: 0.95, damage: 6, base: 125, growth: 360, angle: 50 } },
-  ron: { projectile: { kind: 'rook', speed: 625, life: 1.15, damage: 9, base: 175, growth: 470, angle: 55 } },
-  shrek: { rush: { kind: 'ogre', speed: 400, time: 0.43, reach: 43, damage: 11, base: 205, growth: 570, angle: 46 } },
+  ron: { leviosa: LEVIOSA },
+  shrek: { puddle: SLIME },
 });
 
 export const CHAIN = Object.freeze({ window: 1.6, step: 0.08, max: 0.42 });
@@ -109,7 +116,7 @@ export function makeFighter(id, name, character, slot) {
     recoveryUsed: false,
     grabTarget: null, grabbedBy: null, grabTimer: 0, throwBounce: 0,
     hookedBy: null, hookTime: 0, waftCharge: 0,
-    spinTime: 0, spinDir: 0, eggTime: 0,
+    spinTime: 0, spinDir: 0, eggTime: 0, slowTime: 0, leviosaTime: 0, leviosaY: 0,
     emoteTime: 0, emoteCooldown: 0,
     stun: 0, invuln: 2.3, respawn: 0, ready: false,
     kos: 0, falls: 0, flash: 0,
@@ -179,7 +186,7 @@ export function resetFighter(p, slot = p.slot) {
   p.recoveryUsed = false;
   p.grabTarget = null; p.grabbedBy = null; p.grabTimer = 0; p.throwBounce = 0;
   p.hookedBy = null; p.hookTime = 0; p.waftCharge = 0;
-  p.spinTime = 0; p.spinDir = 0; p.eggTime = 0;
+  p.spinTime = 0; p.spinDir = 0; p.eggTime = 0; p.slowTime = 0; p.leviosaTime = 0; p.leviosaY = 0;
   p.emoteTime = 0; p.emoteCooldown = 0;
   p.stun = 0; p.invuln = 0; p.respawn = 0; p.kos = 0; p.falls = 0; p.flash = 0;
 }
@@ -192,7 +199,7 @@ export function isOut(p) {
 // Run the same movement rules in the authoritative room and the local client.
 // Combat, damage, stocks and respawns remain server-owned.
 export function jumpBrawlFighter(p, down = false) {
-  if (p.stocks <= 0 || p.respawn > 0 || p.stun > 0.12 || p.shielding || p.rollTime > 0 || p.grabTarget || p.grabbedBy || p.attack === 'upair') return null;
+  if (p.stocks <= 0 || p.respawn > 0 || p.stun > 0.12 || p.shielding || p.rollTime > 0 || p.grabTarget || p.grabbedBy || p.leviosaTime > 0 || p.attack === 'upair') return null;
   if (down && p.grounded && p.groundIndex > 0) {
     p.grounded = false; p.drop = 0.23; p.y += 5; p.vy = 75;
     return 'drop';
@@ -206,7 +213,7 @@ export function jumpBrawlFighter(p, down = false) {
 }
 
 export function recoverBrawlFighter(p, move = 0) {
-  if (p.stocks <= 0 || p.respawn > 0 || p.stun > 0 || p.shielding || p.rollTime > 0 || p.grabTarget || p.grabbedBy || p.recoveryUsed || p.attack) return false;
+  if (p.stocks <= 0 || p.respawn > 0 || p.stun > 0 || p.shielding || p.rollTime > 0 || p.grabTarget || p.grabbedBy || p.leviosaTime > 0 || p.recoveryUsed || p.attack) return false;
   const stats = FIGHTERS[p.character];
   p.recoveryUsed = true;
   p.grounded = false; p.coyote = 0; p.drop = 0;
@@ -216,6 +223,9 @@ export function recoverBrawlFighter(p, move = 0) {
 }
 
 export function stepBrawlMovement(p, move, dt, shieldInput = false) {
+  p.slowTime = Math.max(0, (p.slowTime || 0) - dt);
+  const levitating = (p.leviosaTime || 0) > 0;
+  p.leviosaTime = Math.max(0, (p.leviosaTime || 0) - dt);
   p.stun = Math.max(0, p.stun - dt);
   p.drop = Math.max(0, p.drop - dt);
   p.coyote = Math.max(0, p.coyote - dt);
@@ -223,6 +233,11 @@ export function stepBrawlMovement(p, move, dt, shieldInput = false) {
   const wasRolling = p.rollTime > 0;
   p.rollTime = Math.max(0, (p.rollTime || 0) - dt);
   if (wasRolling && !p.rollTime) p.vx = 0;
+  if (levitating) {
+    p.vx = 0; p.vy = 0; p.grounded = false; p.coyote = 0; p.rollInput = 0;
+    p.y += ((p.leviosaY ?? p.y) - p.y) * Math.min(1, dt * 5);
+    return false;
+  }
   const chord = shieldInput && move ? move : 0;
   const rollEdge = chord && p.rollInput !== chord;
   p.rollInput = chord;
@@ -243,7 +258,7 @@ export function stepBrawlMovement(p, move, dt, shieldInput = false) {
     const walking = shieldInput || p.shielding ? 0 : move;
     if (walking) {
       p.face = walking;
-      const target = walking * stats.speed;
+      const target = walking * stats.speed * (p.slowTime > 0 ? SLIME.slowFactor : 1);
       const change = (p.grounded ? 3400 : 1650 * stats.air) * dt;
       p.vx = p.vx < target ? Math.min(p.vx + change, target) : Math.max(p.vx - change, target);
     } else if (p.grounded) p.vx *= 0.76;
