@@ -1,4 +1,4 @@
-import { BRAWL, BRAWL_WORLDS, BRAWL_TEAMS, BRAWL_ROLL, BRAWL_EMOTE, BRAWL_EMOTE_LINES, FIGHTERS, ATTACKS, CAPE, EGG_LAY, MIC_WAVE, SLIME, CONFUNDO, WEB_SHOT, WEB_PAD, isBrawlRollInvulnerable, makeFighter, knockback } from '/shared/brawl.js';
+import { BRAWL, BRAWL_WORLDS, BRAWL_TEAMS, BRAWL_ROLL, BRAWL_EMOTE, BRAWL_EMOTE_LINES, FIGHTERS, ATTACKS, CAPE, EGG_LAY, MIC_WAVE, SLIME, CONFUNDO, ARROW_TRAP, WEB_PAD, isBrawlRollInvulnerable, makeFighter, knockback } from '/shared/brawl.js';
 import { BrawlTimeline, BrawlPredictor } from '/shared/brawl-client.js';
 import { music } from '/music.js';
 
@@ -252,7 +252,7 @@ function connect() {
       state = m; receivedAt = performance.now();
       timeline.push(m, receivedAt);
       const mine = m.players.find(player => player.id === myId);
-      if (m.phase === 'playing' && mine && !mine.spectator && !mine.rush) {
+      if (m.phase === 'playing' && mine && !mine.spectator && !mine.rush && !mine.swing) {
         const meanPing = pingTimes.length
           ? pingTimes.reduce((sum, ms) => sum + ms, 0) / pingTimes.length : 70;
         predictor.reconcile(mine, receivedAt, meanPing / 2);
@@ -563,10 +563,14 @@ function onState(s) {
       burst(event.x, event.y, '#d8efff', 16, 125); sound('recovery');
     } else if (event.type === 'webbounce') {
       burst(event.x, event.y, '#e3f7ff', 12, 165); sound('jump');
-    } else if (event.type === 'webbind') {
-      burst(event.x, event.y, '#f2faff', 17, 125); sound('hook');
-    } else if (event.type === 'arrowrain') {
-      burst(event.x, event.y, '#f6dfa6', 19, 160); sound('swing');
+    } else if (event.type === 'webswing') {
+      burst(event.x2, event.y2, '#f2faff', 10, 90); sound('hook');
+    } else if (event.type === 'webrelease') {
+      burst(event.x, event.y, '#e3f7ff', 8, 110); sound('jump');
+    } else if (event.type === 'arrowtrap') {
+      burst(event.x, event.y - 4, '#d4ba7d', 10, 80); sound('egg');
+    } else if (event.type === 'traptrigger') {
+      burst(event.x, event.y - 10, '#f6dfa6', 22, 200); sound('hit', 240);
     } else if (event.type === 'cape') sound('cape');
     else if (event.type === 'capeturn') burst(event.x, event.y, '#fff0b1', 13, 170);
     else if (event.type === 'tongue') sound('swing');
@@ -1203,31 +1207,6 @@ function drawProjectile(p, lag, now, players) {
     ctx.restore();
     return;
   }
-  if (p.kind === 'rainArrow') {
-    ctx.save(); ctx.translate(x, y);
-    if (y < BRAWL.platforms[0].y - 35) {
-      ctx.strokeStyle = '#f1d29a99'; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.ellipse(0, BRAWL.platforms[0].y - y - 5, 18, 5, 0, 0, Math.PI * 2); ctx.stroke();
-    }
-    ctx.fillStyle = '#e8d7a7'; ctx.fillRect(-2, -22, 4, 36);
-    ctx.fillStyle = '#f5eee0'; ctx.fillRect(-6, 11, 12, 11);
-    ctx.fillStyle = '#68815d'; ctx.fillRect(-7, -24, 5, 9); ctx.fillRect(2, -24, 5, 9);
-    ctx.fillStyle = '#f3dfaa55'; ctx.fillRect(-1, -48, 2, 20);
-    ctx.restore();
-    return;
-  }
-  if (p.kind === 'web') {
-    ctx.save(); ctx.translate(x, y);
-    ctx.fillStyle = '#dceefb77'; ctx.fillRect(-28 * direction, -2, 25, 4);
-    ctx.strokeStyle = '#ecf8ff'; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); ctx.stroke();
-    for (const angle of [0, Math.PI / 3, Math.PI * 2 / 3]) {
-      ctx.beginPath(); ctx.moveTo(Math.cos(angle) * 13, Math.sin(angle) * 13);
-      ctx.lineTo(-Math.cos(angle) * 13, -Math.sin(angle) * 13); ctx.stroke();
-    }
-    ctx.restore();
-    return;
-  }
   if (['pamphlet', 'knight', 'mud', 'record'].includes(p.kind)) {
     ctx.save();
     ctx.translate(x, y);
@@ -1285,6 +1264,22 @@ function drawProjectile(p, lag, now, players) {
 }
 
 function drawPuddle(p, now) {
+  if (p.kind === 'trap') {
+    const fade = Math.min(1, p.life * 2);
+    ctx.save(); ctx.globalAlpha = fade * (p.armed ? 1 : 0.55);
+    ctx.fillStyle = '#3b302e';
+    ctx.beginPath(); ctx.ellipse(p.x, p.y - 3, p.radius, 8, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#7a543e';
+    ctx.beginPath(); ctx.ellipse(p.x, p.y - 4, p.radius - 5, 5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#d5ba85';
+    for (let i = -2; i <= 2; i++) ctx.fillRect(p.x + i * 10 - 2, p.y - 14 + Math.abs(i) * 2, 4, 9);
+    if (p.armed) {
+      ctx.fillStyle = Math.floor(now / 350) % 2 ? '#e0544a' : '#7d2c2a';
+      ctx.fillRect(p.x - 2, p.y - 20, 4, 4);
+    }
+    ctx.restore();
+    return;
+  }
   if (p.kind === 'webpad') {
     const fade = Math.min(1, p.life * 2, WEB_PAD.duration - p.life + 0.2);
     ctx.save(); ctx.globalAlpha = fade;
@@ -1506,18 +1501,14 @@ function drawPlayer(p, lag) {
     ctx.textAlign = 'center'; ctx.fillText('?', x - 24, y - 80); ctx.fillText('?', x + 25, y - 64);
     ctx.restore();
   }
-  if (p.webTime > 0) {
+  if (p.swing) {
     ctx.save();
-    ctx.strokeStyle = '#e9f7ff'; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.ellipse(x, y - 38, 30, 42, 0, 0, Math.PI * 2); ctx.stroke();
-    for (let i = -1; i <= 1; i++) {
-      ctx.beginPath(); ctx.moveTo(x - 27, y - 55 + i * 14);
-      ctx.lineTo(x + 27, y - 24 + i * 14); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(x + 27, y - 55 + i * 14);
-      ctx.lineTo(x - 27, y - 24 + i * 14); ctx.stroke();
-    }
-    ctx.fillStyle = '#ecf8ff'; ctx.font = '20px "PixelText", monospace';
-    ctx.textAlign = 'center'; ctx.fillText('WEBBED', x, y - 88);
+    ctx.strokeStyle = '#f2faff'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(x, y - 50); ctx.lineTo(p.swing.ax, p.swing.ay); ctx.stroke();
+    ctx.strokeStyle = '#ffffff88'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x + 2, y - 50); ctx.lineTo(p.swing.ax + 2, p.swing.ay); ctx.stroke();
+    ctx.fillStyle = '#ecf8ff';
+    ctx.beginPath(); ctx.arc(p.swing.ax, p.swing.ay, 6, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   }
   if (p.wardTime > 0) {

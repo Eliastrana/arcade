@@ -21,7 +21,6 @@ function interpolateActors(first, second, t) {
       confuseTime: mix(actor.confuseTime || 0, newer.confuseTime || 0, t),
       wardTime: mix(actor.wardTime || 0, newer.wardTime || 0, t),
       ferretTime: mix(actor.ferretTime || 0, newer.ferretTime || 0, t),
-      webTime: mix(actor.webTime || 0, newer.webTime || 0, t),
       emoteTime: mix(actor.emoteTime || 0, newer.emoteTime || 0, t),
     }];
   }).concat(t >= 1 ? second.filter(actor => !first.some(old => old.id === actor.id)) : []);
