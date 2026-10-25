@@ -674,14 +674,14 @@ readyButton.addEventListener('click', () => {
 });
 
 function inputMove() {
-  return (keys.has('d') || keys.has('arrowright') || keys.has('touchright') ? 1 : 0) -
-    (keys.has('a') || keys.has('arrowleft') || keys.has('touchleft') ? 1 : 0);
+  return (keys.has('d') || keys.has('arrowright') || keys.has('touchright') || keys.has('padright') ? 1 : 0) -
+    (keys.has('a') || keys.has('arrowleft') || keys.has('touchleft') || keys.has('padleft') ? 1 : 0);
 }
 function throwDirection() {
   return {
     dirX: inputMove(),
-    dirY: (keys.has('s') || keys.has('arrowdown') ? 1 : 0) -
-      (keys.has('w') || keys.has('arrowup') ? 1 : 0),
+    dirY: (keys.has('s') || keys.has('arrowdown') || keys.has('paddown') ? 1 : 0) -
+      (keys.has('w') || keys.has('arrowup') || keys.has('padup') ? 1 : 0),
   };
 }
 function action(name) {
@@ -743,6 +743,52 @@ for (const button of throwPad.querySelectorAll('button')) {
     send('brawl-action', { action: 'throw', dirX: Number(button.dataset.x), dirY: Number(button.dataset.y) });
   });
 }
+// ---- game controller (PS4/DualShock and anything else with the browser's "standard" layout), laid out like Smash Bros:
+//   left stick / D-pad  move (stick down + jump drops through a platform)     Circle    quick attack (A)
+//   Cross               special (B); with the stick held up it is the up-recovery (Up+B)
+//   Square / Triangle   jump (Y / X)          L1  special 2          R1  grab (+ stick to throw)
+//   L2 / R2             shield (+ stick sideways to roll)           right stick  smash attack (flick)
+//   R3                  dance                                       Options      ready / start
+const PAD = { move: 0.35, flick: 0.7, rearm: 0.4 };
+let padPrev = [], padFlickArmed = true;
+function pollPad() {
+  const pad = [...(navigator.getGamepads?.() ?? [])].find(g => g?.connected && g.mapping === 'standard') ??
+    [...(navigator.getGamepads?.() ?? [])].find(g => g?.connected);
+  for (const key of ['padleft', 'padright', 'padup', 'paddown', 'padshield']) keys.delete(key);
+  if (!pad) { padPrev = []; return; }
+  const down = i => !!pad.buttons[i]?.pressed;
+  const pressed = i => down(i) && !padPrev[i];
+  const lx = pad.axes[0] ?? 0, ly = pad.axes[1] ?? 0, rx = pad.axes[2] ?? 0, ry = pad.axes[3] ?? 0;
+  const anyPressed = pad.buttons.some((b, i) => b.pressed && !padPrev[i]);
+  const left = lx < -PAD.move || down(14), right = lx > PAD.move || down(15);
+  const up = ly < -PAD.move || down(12), downStick = ly > PAD.move || down(13);
+  const frame = [...pad.buttons.keys()].map(down);
+  if (!howto.hidden) { if (pressed(1) || pressed(9)) closeHowto(); padPrev = frame; return; }
+  if (splash) { if (anyPressed) leaveSplash(); padPrev = frame; return; }
+  if (browsing) { padPrev = frame; return; }
+  if (!lobby.hidden) {
+    if (pressed(9) && !readyButton.disabled) readyButton.click();
+    padPrev = frame; return;
+  }
+  if (left) keys.add('padleft');
+  if (right) keys.add('padright');
+  if (up) keys.add('padup');
+  if (downStick) keys.add('paddown');
+  if (down(6) || down(7) || (pad.buttons[6]?.value ?? 0) > 0.4 || (pad.buttons[7]?.value ?? 0) > 0.4) keys.add('padshield');
+  if (pressed(2) || pressed(3)) action('jump');
+  if (pressed(1)) action('jab');
+  if (pressed(0)) action(ly < -0.5 ? 'upair' : 'special');
+  if (pressed(4)) action('special2');
+  if (pressed(5)) action('grab');
+  if (pressed(11)) action('emote');
+  const flick = Math.hypot(rx, ry);
+  if (flick > PAD.flick && padFlickArmed) {
+    padFlickArmed = false;
+    action('smash');
+  } else if (flick < PAD.rearm) padFlickArmed = true;
+  padPrev = frame;
+}
+
 function tickLocal(now) {
   const me = state?.players.find(player => player.id === myId);
   if (state?.phase !== 'playing' || !me || me.spectator) {
@@ -752,8 +798,8 @@ function tickLocal(now) {
   const input = {
     seq: ++inputSeq,
     move: inputMove(),
-    down: keys.has('s') || keys.has('arrowdown'),
-    shield: combatFeatures && (keys.has('shift') || keys.has('touchshield')),
+    down: keys.has('s') || keys.has('arrowdown') || keys.has('paddown'),
+    shield: combatFeatures && (keys.has('shift') || keys.has('touchshield') || keys.has('padshield')),
     jump: queuedJump,
     upair: queuedUpair,
   };
@@ -2099,6 +2145,7 @@ howto.addEventListener('mousedown', event => { if (event.target === howto) close
 let lastFrame = performance.now();
 function render(now) {
   const dt = Math.min(0.05, (now - lastFrame) / 1000); lastFrame = now;
+  pollPad();
   simAccumulator = Math.min(simAccumulator + dt, BRAWL.tick * 3);
   while (simAccumulator >= BRAWL.tick) {
     tickLocal(now - simAccumulator * 1000);
