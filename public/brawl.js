@@ -1,4 +1,4 @@
-import { BRAWL, BRAWL_WORLDS, BRAWL_TEAMS, BRAWL_ROLL, BRAWL_EMOTE, BRAWL_EMOTE_LINES, FIGHTERS, ATTACKS, CAPE, EGG_LAY, MIC_WAVE, SLIME, isBrawlRollInvulnerable, makeFighter, knockback } from '/shared/brawl.js';
+import { BRAWL, BRAWL_WORLDS, BRAWL_TEAMS, BRAWL_ROLL, BRAWL_EMOTE, BRAWL_EMOTE_LINES, FIGHTERS, ATTACKS, CAPE, EGG_LAY, MIC_WAVE, SLIME, CONFUNDO, isBrawlRollInvulnerable, makeFighter, knockback } from '/shared/brawl.js';
 import { BrawlTimeline, BrawlPredictor } from '/shared/brawl-client.js';
 import { music } from '/music.js';
 
@@ -64,6 +64,8 @@ const scores = document.querySelector('#scores');
 const status = document.querySelector('#status');
 const netStats = document.querySelector('#netStats');
 const flash = document.querySelector('#flash');
+const confundoNotice = document.querySelector('#confundoNotice');
+const confundoFill = document.querySelector('#confundoFill');
 const extraControls = document.querySelector('#extraControls');
 const throwHint = document.querySelector('#throwHint');
 const throwPad = document.querySelector('#throwPad');
@@ -391,6 +393,10 @@ function onState(s) {
   if (speakingPlayerId !== null && !s.players.some(p => p.id === speakingPlayerId && p.emoteTime > 0))
     stopEmoteSpeech();
   const self = s.players.find(p => p.id === myId);
+  const confounded = s.phase === 'playing' && self && !self.spectator && self.stocks > 0 &&
+    self.respawn <= 0 && self.confuseTime > 0;
+  confundoNotice.hidden = !confounded;
+  if (confounded) confundoFill.style.width = `${Math.max(0, Math.min(100, self.confuseTime / CONFUNDO.duration * 100))}%`;
   emoteButton.hidden = !emotesEnabled || s.phase !== 'playing' || !self || self.spectator || self.stocks <= 0;
   emoteButton.disabled = !self || self.respawn > 0 || !self.grounded || self.emoteCooldown > 0;
   emoteButton.textContent = self?.emoteCooldown > 0 ? `Dans ${self.emoteCooldown.toFixed(1)} s` : 'Dans · E';
@@ -1231,6 +1237,23 @@ function drawEmoteLine(p, x, y) {
   ctx.restore();
 }
 
+function drawConfundoBadge(p, x, y) {
+  const width = 140, left = Math.max(4, Math.min(BRAWL.width - width - 4, Math.round(x - width / 2)));
+  const top = Math.max(5, Math.round(y - (p.emoteTime > 0 ? 178 : 140)));
+  ctx.save();
+  ctx.fillStyle = '#271b3d'; ctx.fillRect(left - 3, top - 3, width + 6, 43);
+  ctx.fillStyle = '#d7a8ff'; ctx.fillRect(left, top, width, 37);
+  ctx.fillStyle = '#38234c'; ctx.fillRect(left + 2, top + 2, width - 4, 33);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#fff2ff'; ctx.font = '10px "Pixel", monospace';
+  ctx.fillText('CONFUNDO', left + width / 2, top + 16);
+  ctx.font = '17px "PixelText", monospace';
+  ctx.fillText('←  →  BYTTET', left + width / 2, top + 31);
+  ctx.fillStyle = '#d7a8ff';
+  ctx.fillRect(left + 3, top + 39, Math.round((width - 6) * Math.min(1, p.confuseTime / CONFUNDO.duration)), 3);
+  ctx.restore();
+}
+
 function drawPlayer(p, lag) {
   if (p.stocks <= 0 || p.respawn > 0) return;
   const x = p.x + p.vx * lag;
@@ -1249,8 +1272,12 @@ function drawPlayer(p, lag) {
     ctx.fillStyle = '#fff3bc'; ctx.fillRect(x - 35, y - 68, 6, 6); ctx.fillRect(x + 30, y - 26, 5, 5);
   }
   if (p.confuseTime > 0) {
-    ctx.fillStyle = '#d9b9f0'; ctx.font = '18px "PixelText", monospace';
+    ctx.save();
+    ctx.strokeStyle = '#d7a8ff'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.ellipse(x, y - 38, 30, 45, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#efd3ff'; ctx.font = '22px "PixelText", monospace';
     ctx.textAlign = 'center'; ctx.fillText('?', x - 24, y - 80); ctx.fillText('?', x + 25, y - 64);
+    ctx.restore();
   }
   if (p.wardTime > 0) {
     ctx.strokeStyle = '#b6e5ff'; ctx.lineWidth = 4;
@@ -1424,6 +1451,7 @@ function drawPlayer(p, lag) {
   ctx.fillStyle = p.id === myId ? '#ffe184' : teamColor || character.color;
   ctx.fillText(label, x, y - 76);
   if (p.emoteTime > 0) drawEmoteLine(p, x, y);
+  if (p.confuseTime > 0) drawConfundoBadge(p, x, y);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

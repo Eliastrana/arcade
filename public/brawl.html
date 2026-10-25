@@ -25,6 +25,10 @@
   #volume::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:10px;height:16px;margin-top:-6px;background:#abc86e;border:2px solid #193847}#volume::-moz-range-thumb{width:6px;height:12px;background:#abc86e;border:2px solid #193847;border-radius:0}
   #volume:focus-visible{outline:2px solid #e8e6a6;outline-offset:2px}
   #hud{position:fixed;inset:0;z-index:2;pointer-events:none}
+  #confundoNotice{position:absolute;top:70px;left:50%;transform:translateX(-50%);width:min(330px,calc(100vw - 24px));padding:9px 13px 8px;text-align:center;background:#241a38f2;border:3px solid #d7a8ff;box-shadow:5px 5px 0 #152b3c;color:#fff0ff;text-shadow:2px 2px #342044}
+  #confundoNotice[hidden]{display:none}#confundoNotice strong{display:block;font:10px/1.5 "Pixel",monospace;color:#f5d3ff}#confundoNotice span{display:block;font:21px/1.1 "PixelText",monospace}
+  #confundoTrack{height:6px;margin-top:6px;background:#5c426d}#confundoFill{display:block;height:100%;width:100%;background:#e0a9ff}
+  @media(max-width:650px){#confundoNotice{top:70px;padding:7px 9px}#confundoNotice strong{font-size:9px}#confundoNotice span{font-size:18px}}
   #hudTop{position:absolute;top:12px;left:16px;right:16px;display:flex;justify-content:space-between;align-items:start;gap:10px;text-shadow:2px 2px #173446,1px 1px #173446;font-size:17px}
   #brand{color:#f6f6dc;font-weight:900;font-size:21px}#status{color:#e4f6f1;margin-top:5px}#hudRight{text-align:right;color:#edf7e9}
   #netStats{color:#d4f4ce;margin-top:5px;pointer-events:auto}#netStats.warn{color:#ffeda7}#netStats.bad{color:#ffb69c}
@@ -149,7 +153,7 @@
 <canvas id="worldBackground" width="960" height="540" aria-hidden="true"></canvas>
 <canvas id="game" width="960" height="540" aria-label="plattformkamp i sanntid"></canvas>
 <div id="countdown" hidden aria-live="polite"></div>
-<div id="hud"><div id="hudTop"><div><div id="brand">Slagbrødre</div><div id="status">Kobler til …</div><div id="netStats" title="Tap teller WebSocket-målinger som ikke ble besvart innen 2,5 sekunder. Det er ikke ekte IP-pakketap.">Ping — · Tap —</div></div><div id="hudRight"><div id="matchRule">Siste mann står · 3 liv</div><div id="worldStatus">Dolomittene</div></div></div><div id="flash"></div><div id="scores"></div></div>
+<div id="hud"><div id="hudTop"><div><div id="brand">Slagbrødre</div><div id="status">Kobler til …</div><div id="netStats" title="Tap teller WebSocket-målinger som ikke ble besvart innen 2,5 sekunder. Det er ikke ekte IP-pakketap.">Ping — · Tap —</div></div><div id="hudRight"><div id="matchRule">Siste mann står · 3 liv</div><div id="worldStatus">Dolomittene</div></div></div><div id="confundoNotice" role="status" aria-live="polite" hidden><strong>CONFUNDO!</strong><span>Venstre og høyre er byttet</span><div id="confundoTrack"><i id="confundoFill"></i></div></div><div id="flash"></div><div id="scores"></div></div>
 <button id="emoteButton" type="button" aria-label="dans" hidden>Dans · E</button>
 <div id="audioControls"><button id="muteButton" type="button" aria-pressed="true">♪ På</button><input id="volume" type="range" min="0" max="100" step="1" value="50" aria-label="Lydstyrke"></div>
 <div id="splash"><div class="splashTitle"><h1>Slagbrødrene</h1><p>Slåss mot vennene dine</p></div><button id="play" type="button" autofocus>Spill</button></div>
